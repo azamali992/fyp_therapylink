@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "603935837458",
+    "project_id": "therapylink-eca2f",
+    "storage_bucket": "therapylink-eca2f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:603935837458:android:c0cc3583b76a2c8f6bf7cb",
+        "android_client_info": {
+          "package_name": "com.example.chatbot"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "603935837458-6ku0mrjq9bu6s95ve3huc5r2vnt12o9k.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxHSM0bYjf-Bh5LItO8gAXYouSxWjEZFI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "603935837458-6ku0mrjq9bu6s95ve3huc5r2vnt12o9k.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

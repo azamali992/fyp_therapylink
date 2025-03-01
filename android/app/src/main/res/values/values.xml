@@ -1,0 +1,4 @@
+<resources>
+    <!-- Use a valid resource name starting with a letter -->
+    <string name="web_client_id">603935837458-6ku0mrjq9bu6s95ve3huc5r2vnt12o9k.apps.googleusercontent.com</string>
+</resources>
