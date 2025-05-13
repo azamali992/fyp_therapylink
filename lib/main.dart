@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:therapylink/auth.dart';
-import 'package:therapylink/Views/onboardingpage.dart';
 import 'package:therapylink/Views/bottomnav.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'utils/constants.dart';
+import 'package:therapylink/Views/login.dart';
+import 'auth.dart';
+import 'Views/professional_dashboard.dart';
+import 'utils/user_role.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,9 +52,37 @@ class AuthenticationWrapper extends StatelessWidget {
         }
 
         final bool isLoggedIn = snapshot.data ?? false;
-        return isLoggedIn
-            ? const GoogleBottomBar()
-            : const ConcentricAnimationOnboarding();
+        if (isLoggedIn) {
+          return FutureBuilder<UserRole?>(
+            future: AuthService.getUserRole(),
+            builder: (context, roleSnapshot) {
+              if (roleSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              if (roleSnapshot.hasError || roleSnapshot.data == null) {
+                return const Scaffold(
+                  body: Center(
+                    child: Text('Error checking user role'),
+                  ),
+                );
+              }
+
+              final UserRole role = roleSnapshot.data!;
+              if (role == UserRole.MentalHealthProfessional) {
+                return const ProfessionalDashboard();
+              } else {
+                return const GoogleBottomBar(); // Navigate to MainMenu for regular users
+              }
+            },
+          );
+        } else {
+          return const LoginPage(); // Replace with your login page
+        }
       },
     );
   }

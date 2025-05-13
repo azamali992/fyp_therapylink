@@ -11,8 +11,8 @@ class VoiceChatPage extends StatefulWidget {
 
 class _VoiceChatPageState extends State<VoiceChatPage> {
   bool _isRecording = false;
-  bool _isPlaying = false;
-  List<ChatMessage> _messages = [];
+  final bool _isPlaying = false;
+  final List<ChatMessage> _messages = [];
 
   @override
   Widget build(BuildContext context) {
@@ -157,8 +157,8 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
           FloatingActionButton(
             mini: true,
             backgroundColor: AppColors.bgpurple,
-            child: const Icon(Icons.send),
             onPressed: _sendMessage,
+            child: const Icon(Icons.send),
           ),
         ],
       ),

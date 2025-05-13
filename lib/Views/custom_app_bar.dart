@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:therapylink/utils/colors.dart';
 import 'package:therapylink/welcomepage.dart';
-import 'package:therapylink/utils/constants.dart';
 import 'package:therapylink/auth.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {

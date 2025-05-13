@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
-import 'package:therapylink/Views/custom_app_bar.dart';
 import 'package:therapylink/Views/mainMenu.dart';
 import 'package:therapylink/Views/moodanalysis.dart';
 import 'package:therapylink/Views/profilepage.dart';
 import 'package:therapylink/Views/settings.dart';
 import 'package:therapylink/utils/colors.dart';
-import 'package:therapylink/utils/constants.dart';
-import 'package:therapylink/welcomepage.dart';
 import 'home_page.dart'; // Import the ChatBot
 
 class GoogleBottomBar extends StatefulWidget {

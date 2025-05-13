@@ -1,13 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:therapylink/Views/bottomnav.dart';
+import 'package:therapylink/Views/login.dart';
+import 'package:therapylink/main.dart';
 import 'dart:convert';
 import '../utils/colors.dart';
 import '../utils/strings.dart';
 import '../utils/constants.dart';
-import 'package:therapylink/Views/login.dart';
 import 'package:therapylink/auth.dart';
+import '../utils/user_role.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -19,9 +20,14 @@ class SignUpPage extends StatefulWidget {
 class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
+  final TextEditingController _dobController = TextEditingController();
+  final TextEditingController _genderController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
 
+  // Function to save user to shared preferences
   Future<bool> saveUser(String email, String password) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     String? storedUsers = prefs.getString("users");
@@ -32,14 +38,14 @@ class _SignUpPageState extends State<SignUpPage> {
 
     if (users.containsKey(email)) {
       return false;
+    } else {
+      users[email] = password;
+      await prefs.setString("users", json.encode(users));
+      return true;
     }
-
-    users[email] = password;
-    await prefs.setString("users", json.encode(users));
-    return true;
   }
 
-  void _signUp() async {
+  void _signUp(UserRole role) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -51,11 +57,13 @@ class _SignUpPageState extends State<SignUpPage> {
     bool success = await saveUser(email, password);
 
     if (success) {
-      await AuthService.setLoggedIn(true); // Add this line
+      await AuthService.setLoggedIn(true, role); // Set role accordingly
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const GoogleBottomBar()),
+          MaterialPageRoute(
+            builder: (context) => const AuthenticationWrapper(),
+          ),
         );
       }
     } else {
@@ -71,21 +79,22 @@ class _SignUpPageState extends State<SignUpPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.backgroundGradientStart,
-            AppColors.backgroundGradientEnd,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Container(
+        height: screenHeight,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.backgroundGradientStart,
+              AppColors.backgroundGradientEnd,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: SingleChildScrollView(
-          child: SafeArea(
+        child: SafeArea(
+          child: SingleChildScrollView(
             child: Padding(
               padding: EdgeInsets.symmetric(
                 horizontal: screenWidth * 0.08,
@@ -96,6 +105,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(height: screenHeight * 0.06),
+
                   // Logo
                   Center(
                     child: SizedBox(
@@ -120,40 +130,20 @@ class _SignUpPageState extends State<SignUpPage> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  SizedBox(height: screenHeight * 0.02),
 
-                  const Text(
-                    AppStrings.welcomeMessagesignup,
-                    style: TextStyle(
-                      fontSize: AppConstants.mediumFontSize,
-                      color: Colors.white70,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-
-                  SizedBox(height: screenHeight * 0.06), // Restored from 0.03
+                  SizedBox(height: screenHeight * 0.04),
 
                   // Glassmorphism Form Container
                   ClipRRect(
-                    borderRadius:
-                        BorderRadius.circular(AppConstants.largeBorderRadius),
+                    borderRadius: BorderRadius.circular(AppConstants.largeBorderRadius),
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                       child: Container(
                         padding: EdgeInsets.all(screenWidth * 0.06),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(
-                              AppConstants.largeBorderRadius),
-                          border:
-                              Border.all(color: Colors.white.withOpacity(0.2)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              spreadRadius: 2,
-                            ),
-                          ],
+                          borderRadius: BorderRadius.circular(AppConstants.largeBorderRadius),
+                          border: Border.all(color: Colors.white.withOpacity(0.2)),
                         ),
                         child: Column(
                           children: [
@@ -162,20 +152,16 @@ class _SignUpPageState extends State<SignUpPage> {
                               controller: _emailController,
                               style: const TextStyle(color: Colors.white),
                               decoration: InputDecoration(
-                                labelText: 'Email',
-                                labelStyle: TextStyle(
-                                    color: Colors.white.withOpacity(0.8)),
-                                prefixIcon: const Icon(Icons.email,
-                                    color: Colors.white70),
+                                labelText: AppStrings.emailPlaceholder,
+                                labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
+                                prefixIcon: const Icon(Icons.email, color: Colors.white70),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(15),
-                                  borderSide: BorderSide(
-                                      color: Colors.white.withOpacity(0.3)),
+                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(15),
-                                  borderSide:
-                                      const BorderSide(color: Colors.white),
+                                  borderSide: const BorderSide(color: Colors.white),
                                 ),
                               ),
                             ),
@@ -188,20 +174,100 @@ class _SignUpPageState extends State<SignUpPage> {
                               obscureText: true,
                               style: const TextStyle(color: Colors.white),
                               decoration: InputDecoration(
-                                labelText: 'Password',
-                                labelStyle: TextStyle(
-                                    color: Colors.white.withOpacity(0.8)),
-                                prefixIcon: const Icon(Icons.lock,
-                                    color: Colors.white70),
+                                labelText: AppStrings.passwordPlaceholder,
+                                labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
+                                prefixIcon: const Icon(Icons.lock, color: Colors.white70),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(15),
-                                  borderSide: BorderSide(
-                                      color: Colors.white.withOpacity(0.3)),
+                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(15),
-                                  borderSide:
-                                      const BorderSide(color: Colors.white),
+                                  borderSide: const BorderSide(color: Colors.white),
+                                ),
+                              ),
+                            ),
+
+                            SizedBox(height: screenHeight * 0.02),
+
+                            // Age TextField
+                            TextField(
+                              controller: _ageController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: 'Age',
+                                labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
+                                prefixIcon: const Icon(Icons.cake, color: Colors.white70),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: const BorderSide(color: Colors.white),
+                                ),
+                              ),
+                            ),
+
+                            SizedBox(height: screenHeight * 0.02),
+
+                            // Date of Birth TextField
+                            TextField(
+                              controller: _dobController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: 'Date of Birth',
+                                labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
+                                prefixIcon: const Icon(Icons.calendar_today, color: Colors.white70),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: const BorderSide(color: Colors.white),
+                                ),
+                              ),
+                            ),
+
+                            SizedBox(height: screenHeight * 0.02),
+
+                            // Gender TextField
+                            TextField(
+                              controller: _genderController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: 'Gender',
+                                labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
+                                prefixIcon: const Icon(Icons.person, color: Colors.white70),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: const BorderSide(color: Colors.white),
+                                ),
+                              ),
+                            ),
+
+                            SizedBox(height: screenHeight * 0.02),
+
+                            // Phone Number TextField
+                            TextField(
+                              controller: _phoneController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                labelText: 'Phone Number',
+                                labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
+                                prefixIcon: const Icon(Icons.phone, color: Colors.white70),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: const BorderSide(color: Colors.white),
                                 ),
                               ),
                             ),
@@ -211,12 +277,10 @@ class _SignUpPageState extends State<SignUpPage> {
                     ),
                   ),
 
-                  SizedBox(height: screenHeight * 0.03),
-
                   // Error Message
                   if (_errorMessage != null)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
+                      padding: EdgeInsets.only(top: screenHeight * 0.02),
                       child: Text(
                         _errorMessage!,
                         style: const TextStyle(
@@ -227,27 +291,53 @@ class _SignUpPageState extends State<SignUpPage> {
                       ),
                     ),
 
-                  // Sign Up Button
+                  SizedBox(height: screenHeight * 0.04),
+
+                  // Sign Up as Professional Button
                   _isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(color: Colors.white))
+                      ? const Center(child: CircularProgressIndicator(color: Colors.white))
                       : ElevatedButton(
-                          onPressed: _signUp,
+                          onPressed: () => _signUp(UserRole.MentalHealthProfessional),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white.withOpacity(0.2),
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(
-                              horizontal: screenWidth * 0.08,
                               vertical: screenHeight * 0.02,
                             ),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                  AppConstants.borderRadius),
+                              borderRadius: BorderRadius.circular(AppConstants.borderRadius),
                             ),
                             elevation: 0,
                           ),
                           child: const Text(
-                            AppStrings.signUp,
+                            'Sign Up as Professional',
+                            style: TextStyle(
+                              fontSize: AppConstants.mediumFontSize,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+
+                  SizedBox(height: screenHeight * 0.02),
+
+                  // Sign Up as User Button
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                      : ElevatedButton(
+                          onPressed: () => _signUp(UserRole.RegularUser),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              vertical: screenHeight * 0.02,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Sign Up as User',
                             style: TextStyle(
                               fontSize: AppConstants.mediumFontSize,
                               fontWeight: FontWeight.bold,
@@ -259,13 +349,14 @@ class _SignUpPageState extends State<SignUpPage> {
 
                   // Login Link
                   TextButton(
-                    onPressed: () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const LoginPage()),
-                    ),
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const LoginPage()),
+                      );
+                    },
                     child: Text(
-                      'Already have an account? Log in',
+                      "Already have an account? Log in",
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.9),
                         fontSize: AppConstants.smallFontSize,

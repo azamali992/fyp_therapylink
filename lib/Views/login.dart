@@ -2,13 +2,14 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:therapylink/Views/bottomnav.dart';
 import 'package:therapylink/Views/signup.dart';
+import 'package:therapylink/main.dart';
 import 'dart:convert';
 import '../utils/colors.dart';
 import '../utils/strings.dart';
 import '../utils/constants.dart';
 import 'package:therapylink/auth.dart';
+import '../utils/user_role.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -36,7 +37,7 @@ class _LoginPageState extends State<LoginPage> {
     return false;
   }
 
-  void _signIn() async {
+  void _signIn(UserRole role) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -48,11 +49,13 @@ class _LoginPageState extends State<LoginPage> {
     bool isValid = await validateUser(email, password);
 
     if (isValid) {
-      await AuthService.setLoggedIn(true); // Add this line
+      await AuthService.setLoggedIn(true, role); // Set role accordingly
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const GoogleBottomBar()),
+          MaterialPageRoute(
+            builder: (context) => const AuthenticationWrapper(),
+          ),
         );
       }
     } else {
@@ -93,13 +96,13 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SizedBox(height: screenHeight * 0.06), // Restored from 0.02
+                  SizedBox(height: screenHeight * 0.06),
 
                   // Logo
                   Center(
                     child: SizedBox(
                       width: screenWidth * 0.7,
-                      height: screenHeight * 0.15, // Restored from 0.12
+                      height: screenHeight * 0.15,
                       child: Image.asset(
                         'assets/therapylink_logofull.png',
                         fit: BoxFit.contain,
@@ -107,7 +110,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
 
-                  SizedBox(height: screenHeight * 0.04), // Restored from 0.02
+                  SizedBox(height: screenHeight * 0.04),
 
                   // Welcome Text
                   const Text(
@@ -131,7 +134,7 @@ class _LoginPageState extends State<LoginPage> {
                     textAlign: TextAlign.center,
                   ),
 
-                  SizedBox(height: screenHeight * 0.06), // Restored from 0.03
+                  SizedBox(height: screenHeight * 0.06),
 
                   // Login Form Container with Glassmorphism
                   ClipRRect(
@@ -140,8 +143,7 @@ class _LoginPageState extends State<LoginPage> {
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                       child: Container(
-                        padding: EdgeInsets.all(
-                            screenWidth * 0.06), // Restored from 0.04
+                        padding: EdgeInsets.all(screenWidth * 0.06),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(
@@ -221,18 +223,18 @@ class _LoginPageState extends State<LoginPage> {
 
                   SizedBox(height: screenHeight * 0.04),
 
-                  // Login Button
+                  // Login as Professional Button
                   _isLoading
                       ? const Center(
                           child: CircularProgressIndicator(color: Colors.white))
                       : ElevatedButton(
-                          onPressed: _signIn,
+                          onPressed: () =>
+                              _signIn(UserRole.MentalHealthProfessional),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white.withOpacity(0.2),
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.symmetric(
-                              vertical:
-                                  screenHeight * 0.02, // Restored from 0.015
+                              vertical: screenHeight * 0.02,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(
@@ -241,7 +243,7 @@ class _LoginPageState extends State<LoginPage> {
                             elevation: 0,
                           ),
                           child: const Text(
-                            AppStrings.logIn,
+                            'Login as Professional',
                             style: TextStyle(
                               fontSize: AppConstants.mediumFontSize,
                               fontWeight: FontWeight.bold,
@@ -249,7 +251,36 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
 
-                  SizedBox(height: screenHeight * 0.02), // Restored from 0.015
+                  SizedBox(height: screenHeight * 0.02),
+
+                  // Login as User Button
+                  _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(color: Colors.white))
+                      : ElevatedButton(
+                          onPressed: () => _signIn(UserRole.RegularUser),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.2),
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(
+                              vertical: screenHeight * 0.02,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(
+                                  AppConstants.borderRadius),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Login as User',
+                            style: TextStyle(
+                              fontSize: AppConstants.mediumFontSize,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+
+                  SizedBox(height: screenHeight * 0.02),
 
                   // Sign Up Link
                   TextButton(
