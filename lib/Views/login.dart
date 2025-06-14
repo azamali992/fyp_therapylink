@@ -10,6 +10,11 @@ import '../utils/strings.dart';
 import '../utils/constants.dart';
 import 'package:therapylink/auth.dart';
 import '../utils/user_role.dart';
+// Add this to the imports at the top
+import 'package:firebase_auth/firebase_auth.dart'; // if not already
+import 'package:flutter_signin_button/flutter_signin_button.dart'; // optional, for nice buttons
+import 'package:firebase_core/firebase_core.dart'; // Ensure this is imported
+import '../firebase_options.dart'; // Ensure this is imported
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -67,6 +72,22 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _initializeFirebase();
+  }
+
+  Future<void> _initializeFirebase() async {
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } catch (e) {
+      // Firebase may already be initialized, ignore if so
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
@@ -97,8 +118,6 @@ class _LoginPageState extends State<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(height: screenHeight * 0.06),
-
-                  // Logo
                   Center(
                     child: SizedBox(
                       width: screenWidth * 0.7,
@@ -109,10 +128,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-
                   SizedBox(height: screenHeight * 0.04),
-
-                  // Welcome Text
                   const Text(
                     AppStrings.loginToTherapyLink,
                     style: TextStyle(
@@ -122,9 +138,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-
                   SizedBox(height: screenHeight * 0.02),
-
                   const Text(
                     AppStrings.welcomeMessage,
                     style: TextStyle(
@@ -133,10 +147,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-
                   SizedBox(height: screenHeight * 0.06),
-
-                  // Login Form Container with Glassmorphism
                   ClipRRect(
                     borderRadius:
                         BorderRadius.circular(AppConstants.largeBorderRadius),
@@ -153,7 +164,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         child: Column(
                           children: [
-                            // Email TextField
                             TextField(
                               controller: _emailController,
                               style: const TextStyle(color: Colors.white),
@@ -175,10 +185,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                             ),
-
                             SizedBox(height: screenHeight * 0.02),
-
-                            // Password TextField
                             TextField(
                               controller: _passwordController,
                               obscureText: true,
@@ -206,8 +213,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-
-                  // Error Message
                   if (_errorMessage != null)
                     Padding(
                       padding: EdgeInsets.only(top: screenHeight * 0.02),
@@ -220,10 +225,7 @@ class _LoginPageState extends State<LoginPage> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-
                   SizedBox(height: screenHeight * 0.04),
-
-                  // Login as Professional Button
                   _isLoading
                       ? const Center(
                           child: CircularProgressIndicator(color: Colors.white))
@@ -250,10 +252,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
-
                   SizedBox(height: screenHeight * 0.02),
-
-                  // Login as User Button
                   _isLoading
                       ? const Center(
                           child: CircularProgressIndicator(color: Colors.white))
@@ -279,10 +278,69 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                         ),
-
                   SizedBox(height: screenHeight * 0.02),
 
-                  // Sign Up Link
+                  /// 🔽= Google Sign-In & Sign-Up Buttons
+                  SignInButton(
+                    Buttons.Google,
+                    text: "Sign In with Google",
+                    onPressed: () async {
+                      setState(() => _isLoading = true);
+                      final user = await AuthService.signInWithGoogle();
+                      setState(() => _isLoading = false);
+                      if (user != null) {
+                        await AuthService.setLoggedIn(
+                            true, UserRole.RegularUser);
+                        if (mounted) {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const AuthenticationWrapper(),
+                            ),
+                          );
+                        }
+                      } else {
+                        setState(() {
+                          _errorMessage = "Google Sign In failed.";
+                        });
+                      }
+                    },
+                  ),
+                  SizedBox(height: screenHeight * 0.015),
+                  SignInButton(
+                    Buttons.Google,
+                    text: "Sign Up with Google",
+                    onPressed: () async {
+                      setState(() => _isLoading = true);
+                      final user = await AuthService.signInWithGoogle();
+                      setState(() => _isLoading = false);
+                      if (user != null) {
+                        final isNewUser = user.metadata.creationTime ==
+                            user.metadata.lastSignInTime;
+                        if (isNewUser) {
+                          print("New user signed up with Google");
+                        }
+                        await AuthService.setLoggedIn(
+                            true, UserRole.RegularUser);
+                        if (mounted) {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const AuthenticationWrapper(),
+                            ),
+                          );
+                        }
+                      } else {
+                        setState(() {
+                          _errorMessage = "Google Sign Up failed.";
+                        });
+                      }
+                    },
+                  ),
+
+                  SizedBox(height: screenHeight * 0.02),
                   TextButton(
                     onPressed: () {
                       Navigator.pushReplacement(

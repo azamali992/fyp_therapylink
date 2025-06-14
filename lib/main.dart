@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart'; // add this
+import 'firebase_options.dart'; // add this
 import 'package:therapylink/Views/bottomnav.dart';
 import 'package:therapylink/Views/login.dart';
 import 'auth.dart';
 import 'Views/professional_dashboard.dart';
 import 'utils/user_role.dart';
 
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ✅ Initialize Firebase with auto-generated options
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 
@@ -29,7 +38,6 @@ class MyApp extends StatelessWidget {
 
 class AuthenticationWrapper extends StatelessWidget {
   const AuthenticationWrapper({super.key});
-
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<bool>(

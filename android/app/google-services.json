@@ -1,34 +1,41 @@
 {
   "project_info": {
-    "project_number": "603935837458",
-    "project_id": "therapylink-eca2f",
-    "storage_bucket": "therapylink-eca2f.firebasestorage.app"
+    "project_number": "975276530329",
+    "project_id": "therapylink69",
+    "storage_bucket": "therapylink69.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:603935837458:android:c0cc3583b76a2c8f6bf7cb",
+        "mobilesdk_app_id": "1:975276530329:android:a77c42db70a5181b863608",
         "android_client_info": {
           "package_name": "com.example.chatbot"
         }
       },
       "oauth_client": [
         {
-          "client_id": "603935837458-6ku0mrjq9bu6s95ve3huc5r2vnt12o9k.apps.googleusercontent.com",
+          "client_id": "975276530329-5u9pf583f3jun8orsrhgvm1op18hvh31.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAxHSM0bYjf-Bh5LItO8gAXYouSxWjEZFI"
+          "current_key": "AIzaSyAh71Q1hN_Ol9trmteBqo1jr0aOrYh-f1s"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "603935837458-6ku0mrjq9bu6s95ve3huc5r2vnt12o9k.apps.googleusercontent.com",
+              "client_id": "975276530329-5u9pf583f3jun8orsrhgvm1op18hvh31.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "975276530329-t2gac7jo6gne8qd3bvagehcm70jpfabb.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.therapylink"
+              }
             }
           ]
         }
