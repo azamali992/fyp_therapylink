@@ -47,9 +47,9 @@ Widget buildMenuItem({
             end: Alignment.bottomRight,
           ),
           border: Border.all(
-            color: isClicked[label]!
-                ? Colors.white.withOpacity(0.3)
-                : Colors.transparent,
+            color: !isClicked[label]!
+                ? Colors.transparent
+                : Colors.white.withOpacity(0.3),
             width: 2.0,
           ),
           borderRadius: BorderRadius.circular(30.0),

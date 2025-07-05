@@ -99,3 +99,5 @@ class AppConstants {
     return users.containsKey(email) && users[email] == password;
   }
 }
+// constants.dart
+

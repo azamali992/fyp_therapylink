@@ -1,20 +1,19 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:therapylink/Views/signup.dart';
-import 'package:therapylink/main.dart';
-import 'dart:convert';
+import 'package:therapylink/Views/professional_dashboard.dart';
+// import 'package:therapylink/Views/google_bottom_bar.dart'; // Removed because file does not exist
 import '../utils/colors.dart';
 import '../utils/strings.dart';
 import '../utils/constants.dart';
 import 'package:therapylink/auth.dart';
 import '../utils/user_role.dart';
 // Add this to the imports at the top
-import 'package:firebase_auth/firebase_auth.dart'; // if not already
-import 'package:flutter_signin_button/flutter_signin_button.dart'; // optional, for nice buttons
-import 'package:firebase_core/firebase_core.dart'; // Ensure this is imported
-import '../firebase_options.dart'; // Ensure this is imported
+import 'package:flutter_signin_button/flutter_signin_button.dart';
+import 'package:firebase_core/firebase_core.dart';
+import '../firebase_options.dart';
+
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -29,63 +28,126 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Function to validate login from stored users
-  Future<bool> validateUser(String email, String password) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? storedUsers = prefs.getString("users");
-
-    if (storedUsers != null) {
-      Map<String, String> users =
-          Map<String, String>.from(json.decode(storedUsers));
-      return users.containsKey(email) && users[email] == password;
+  // Ensure Firebase is initialized before using it
+  Future<void> ensureFirebaseInitialized() async {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
     }
-    return false;
   }
 
-  void _signIn(UserRole role) async {
+  void _signIn(UserRole expectedRole) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
+    await ensureFirebaseInitialized();
+
     String email = _emailController.text.trim();
     String password = _passwordController.text.trim();
 
-    bool isValid = await validateUser(email, password);
-
-    if (isValid) {
-      await AuthService.setLoggedIn(true, role); // Set role accordingly
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const AuthenticationWrapper(),
-          ),
-        );
-      }
-    } else {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = "Invalid username or password";
-      });
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeFirebase();
-  }
-
-  Future<void> _initializeFirebase() async {
     try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
+      final user = await AuthService.signInWithEmail(email, password);
+
+      if (user != null) {
+        final role = await AuthService.getUserRole(user.uid);
+
+        if (mounted) {
+          if (role == expectedRole) {
+            if (role == UserRole.MentalHealthProfessional) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfessionalDashboard()),
+              );
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(title: const Text('User Dashboard')),
+                    body: const Center(child: Text('User dashboard not implemented.')),
+                  ),
+                ),
+              );
+            }
+          } else {
+            setState(() {
+              _errorMessage = "Role mismatch. Please log in with the correct account.";
+            });
+          }
+        }
+      } else {
+        setState(() => _errorMessage = "Invalid email or password.");
+      }
     } catch (e) {
-      // Firebase may already be initialized, ignore if so
+      setState(() => _errorMessage = "Login failed. ${e.toString()}");
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
+
+
+  Future<void> _signInWithGoogle({bool isSignUp = false}) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    await ensureFirebaseInitialized();
+
+    try {
+      final user = await AuthService.signInWithGoogle();
+
+      if (user != null) {
+        final isNewUser =
+            user.metadata.creationTime == user.metadata.lastSignInTime;
+
+        if (isSignUp && isNewUser) {
+          await AuthService.saveUserRole(user.uid, UserRole.RegularUser);
+        }
+
+        final role = await AuthService.getUserRole(user.uid);
+
+        if (mounted) {
+          if (role == UserRole.MentalHealthProfessional) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfessionalDashboard()),
+            );
+          } else if (role == UserRole.RegularUser) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => Scaffold(
+                  appBar: AppBar(title: const Text('User Dashboard')),
+                  body: const Center(child: Text('User dashboard not implemented.')),
+                ),
+              ),
+            );
+          } else {
+            setState(() {
+              _errorMessage = "No role assigned. Contact support.";
+            });
+          }
+        }
+      } else {
+        setState(() {
+          _errorMessage = isSignUp
+              ? "Google Sign Up failed."
+              : "Google Sign In failed.";
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = "Google Sign-In error: ${e.toString()}";
+      });
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +166,7 @@ class _LoginPageState extends State<LoginPage> {
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
+
           ),
         ),
         child: SafeArea(
@@ -150,7 +213,7 @@ class _LoginPageState extends State<LoginPage> {
                   SizedBox(height: screenHeight * 0.06),
                   ClipRRect(
                     borderRadius:
-                        BorderRadius.circular(AppConstants.largeBorderRadius),
+                    BorderRadius.circular(AppConstants.largeBorderRadius),
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                       child: Container(
@@ -160,7 +223,7 @@ class _LoginPageState extends State<LoginPage> {
                           borderRadius: BorderRadius.circular(
                               AppConstants.largeBorderRadius),
                           border:
-                              Border.all(color: Colors.white.withOpacity(0.2)),
+                          Border.all(color: Colors.white.withOpacity(0.2)),
                         ),
                         child: Column(
                           children: [
@@ -181,7 +244,7 @@ class _LoginPageState extends State<LoginPage> {
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(15),
                                   borderSide:
-                                      const BorderSide(color: Colors.white),
+                                  const BorderSide(color: Colors.white),
                                 ),
                               ),
                             ),
@@ -204,7 +267,7 @@ class _LoginPageState extends State<LoginPage> {
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(15),
                                   borderSide:
-                                      const BorderSide(color: Colors.white),
+                                  const BorderSide(color: Colors.white),
                                 ),
                               ),
                             ),
@@ -228,56 +291,56 @@ class _LoginPageState extends State<LoginPage> {
                   SizedBox(height: screenHeight * 0.04),
                   _isLoading
                       ? const Center(
-                          child: CircularProgressIndicator(color: Colors.white))
+                      child: CircularProgressIndicator(color: Colors.white))
                       : ElevatedButton(
-                          onPressed: () =>
-                              _signIn(UserRole.MentalHealthProfessional),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                              vertical: screenHeight * 0.02,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                  AppConstants.borderRadius),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Login as Professional',
-                            style: TextStyle(
-                              fontSize: AppConstants.mediumFontSize,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                    onPressed: () =>
+                        _signIn(UserRole.MentalHealthProfessional),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        vertical: screenHeight * 0.02,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                            AppConstants.borderRadius),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Login as Professional',
+                      style: TextStyle(
+                        fontSize: AppConstants.mediumFontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                   SizedBox(height: screenHeight * 0.02),
                   _isLoading
                       ? const Center(
-                          child: CircularProgressIndicator(color: Colors.white))
+                      child: CircularProgressIndicator(color: Colors.white))
                       : ElevatedButton(
-                          onPressed: () => _signIn(UserRole.RegularUser),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                              vertical: screenHeight * 0.02,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                  AppConstants.borderRadius),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Login as User',
-                            style: TextStyle(
-                              fontSize: AppConstants.mediumFontSize,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                    onPressed: () => _signIn(UserRole.RegularUser),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        vertical: screenHeight * 0.02,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                            AppConstants.borderRadius),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Login as User',
+                      style: TextStyle(
+                        fontSize: AppConstants.mediumFontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                   SizedBox(height: screenHeight * 0.02),
 
                   /// 🔽= Google Sign-In & Sign-Up Buttons
@@ -285,26 +348,7 @@ class _LoginPageState extends State<LoginPage> {
                     Buttons.Google,
                     text: "Sign In with Google",
                     onPressed: () async {
-                      setState(() => _isLoading = true);
-                      final user = await AuthService.signInWithGoogle();
-                      setState(() => _isLoading = false);
-                      if (user != null) {
-                        await AuthService.setLoggedIn(
-                            true, UserRole.RegularUser);
-                        if (mounted) {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const AuthenticationWrapper(),
-                            ),
-                          );
-                        }
-                      } else {
-                        setState(() {
-                          _errorMessage = "Google Sign In failed.";
-                        });
-                      }
+                      await _signInWithGoogle(isSignUp: false);
                     },
                   ),
                   SizedBox(height: screenHeight * 0.015),
@@ -312,31 +356,7 @@ class _LoginPageState extends State<LoginPage> {
                     Buttons.Google,
                     text: "Sign Up with Google",
                     onPressed: () async {
-                      setState(() => _isLoading = true);
-                      final user = await AuthService.signInWithGoogle();
-                      setState(() => _isLoading = false);
-                      if (user != null) {
-                        final isNewUser = user.metadata.creationTime ==
-                            user.metadata.lastSignInTime;
-                        if (isNewUser) {
-                          print("New user signed up with Google");
-                        }
-                        await AuthService.setLoggedIn(
-                            true, UserRole.RegularUser);
-                        if (mounted) {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const AuthenticationWrapper(),
-                            ),
-                          );
-                        }
-                      } else {
-                        setState(() {
-                          _errorMessage = "Google Sign Up failed.";
-                        });
-                      }
+                      await _signInWithGoogle(isSignUp: true);
                     },
                   ),
 

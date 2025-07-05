@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:therapylink/Views/custom_app_bar.dart';
-import 'package:therapylink/utils/colors.dart';
 
 class MapsPage extends StatefulWidget {
   const MapsPage({super.key});
@@ -14,11 +14,148 @@ class _MapsPageState extends State<MapsPage> {
   late GoogleMapController mapController;
   final TextEditingController _searchController = TextEditingController();
   final Set<Marker> _markers = {};
+  LatLng _center = const LatLng(31.5204, 74.3587); // Default to Pakistan (Lahore)
+  bool _isLoading = true; // To show a loading indicator while getting the location
 
-  final LatLng _center = const LatLng(31.5204, 74.3587); // Updated coordinates
+  // List of clinics (replace with real clinic data)
+  final List<Map<String, dynamic>> _clinics = [
+    {
+      "name": "Psychologist Clinic 1",
+      "rating": 4.5,
+      "address": "123 Main St, Lahore, Pakistan",
+      "phone": "123-456-7890",
+      "lat": 31.5204,
+      "lng": 74.3587,
+    },
+    {
+      "name": "Mental Health Clinic 2",
+      "rating": 4.0,
+      "address": "456 Elm St, Lahore, Pakistan",
+      "phone": "987-654-3210",
+      "lat": 31.5300,
+      "lng": 74.3600,
+    },
+    // Add more clinics...
+  ];
 
-  void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
+  @override
+  void initState() {
+    super.initState();
+    _getUserLocation();
+  }
+
+  // Get the user's current location
+  Future<void> _getUserLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Check if location services are enabled
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      // Location services are not enabled, handle appropriately
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    // Check location permissions
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission != LocationPermission.whileInUse &&
+          permission != LocationPermission.always) {
+        // Handle the case where permission is denied
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+    }
+
+    // Get current position
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+
+    setState(() {
+      _center = LatLng(position.latitude, position.longitude);
+      _isLoading = false; // Stop loading once the location is retrieved
+    });
+
+    // Move the camera to the user's location
+    if (mapController != null) {
+      mapController.animateCamera(
+        CameraUpdate.newLatLng(_center),
+      );
+    }
+
+    // Add a marker for the user's location
+    _markers.add(
+      Marker(
+        markerId: MarkerId('user_location'),
+        position: _center,
+        infoWindow: InfoWindow(title: 'Your Location'),
+      ),
+    );
+
+    // Check nearby clinics
+    _addNearbyClinics(_center);
+  }
+
+  // Add markers for nearby clinics based on user's location
+  void _addNearbyClinics(LatLng userLocation) {
+    _clinics.forEach((clinic) {
+      final clinicLocation = LatLng(clinic['lat'], clinic['lng']);
+      final distance = Geolocator.distanceBetween(
+        userLocation.latitude,
+        userLocation.longitude,
+        clinicLocation.latitude,
+        clinicLocation.longitude,
+      );
+
+      // Add a marker for the clinic if it's within 5 km of the user
+      if (distance <= 5000) {
+        _markers.add(
+          Marker(
+            markerId: MarkerId(clinic["name"]),
+            position: clinicLocation,
+            infoWindow: InfoWindow(
+              title: clinic["name"],
+              snippet: '${clinic["rating"]} Stars',
+              onTap: () => _showClinicDetails(clinic),
+            ),
+          ),
+        );
+      }
+    });
+  }
+
+  // Show clinic details in a dialog
+  void _showClinicDetails(Map<String, dynamic> clinic) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(clinic["name"]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Rating: ${clinic["rating"]}'),
+              Text('Address: ${clinic["address"]}'),
+              Text('Phone: ${clinic["phone"]}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -32,8 +169,7 @@ class _MapsPageState extends State<MapsPage> {
         colorSchemeSeed: Colors.green[700],
       ),
       home: Scaffold(
-        appBar:
-            CustomAppBar(screenWidth: screenWidth, screenHeight: screenHeight),
+        appBar: CustomAppBar(screenWidth: screenWidth, screenHeight: screenHeight),
         body: Column(
           children: [
             Padding(
@@ -50,111 +186,23 @@ class _MapsPageState extends State<MapsPage> {
                   fillColor: const Color.fromARGB(192, 255, 255, 255),
                 ),
                 onSubmitted: (value) {
-                  // Implement search functionality
+                  // Implement search functionality (optional)
                 },
               ),
             ),
-            Expanded(
+            _isLoading
+                ? Center(child: CircularProgressIndicator()) // Show a loading indicator while fetching the location
+                : Expanded(
               child: GoogleMap(
-                onMapCreated: _onMapCreated,
+                onMapCreated: (controller) {
+                  mapController = controller;
+                },
                 initialCameraPosition: CameraPosition(
                   target: _center,
                   zoom: 11.0,
                 ),
                 markers: _markers,
               ),
-            ),
-            SizedBox(
-              height: 200,
-              child: ListView(
-                padding: const EdgeInsets.all(16.0),
-                children: [
-                  _buildClinicCard(
-                    name: 'Psychologist Clinic 1',
-                    rating: 4.5,
-                    address: '123 Main St, San Francisco, CA',
-                    phone: '123-456-7890',
-                  ),
-                  _buildClinicCard(
-                    name: 'Mental Health Clinic 2',
-                    rating: 4.0,
-                    address: '456 Elm St, San Francisco, CA',
-                    phone: '987-654-3210',
-                  ),
-                  // Add more clinic cards as needed
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildClinicCard({
-    required String name,
-    required double rating,
-    required String address,
-    required String phone,
-  }) {
-    return Card(
-      color: AppColors.bgpurple, // Set the background color to purple
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16.0),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.local_hospital, color: Colors.white),
-                const SizedBox(width: 8.0),
-                Expanded(
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 18.0,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8.0),
-            Text(
-              'Rating: $rating',
-              style: const TextStyle(
-                fontSize: 14.0,
-                color: Colors.white70,
-              ),
-            ),
-            Text(
-              address,
-              style: const TextStyle(
-                fontSize: 14.0,
-                color: Colors.white70,
-              ),
-            ),
-            const SizedBox(height: 8.0),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.call, color: Colors.white),
-                  onPressed: () {
-                    // Implement call functionality
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.message, color: Colors.white),
-                  onPressed: () {
-                    // Implement message functionality
-                  },
-                ),
-              ],
             ),
           ],
         ),

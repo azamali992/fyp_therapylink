@@ -1,14 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:therapylink/Views/login.dart';
 import 'package:therapylink/main.dart';
-import 'dart:convert';
 import '../utils/colors.dart';
 import '../utils/strings.dart';
-import '../utils/constants.dart';
 import 'package:therapylink/auth.dart';
 import '../utils/user_role.dart';
+import '../utils/constants.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -27,23 +25,6 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Function to save user to shared preferences
-  Future<bool> saveUser(String email, String password) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? storedUsers = prefs.getString("users");
-
-    Map<String, String> users = storedUsers != null
-        ? Map<String, String>.from(json.decode(storedUsers))
-        : {};
-
-    if (users.containsKey(email)) {
-      return false;
-    } else {
-      users[email] = password;
-      await prefs.setString("users", json.encode(users));
-      return true;
-    }
-  }
 
   void _signUp(UserRole role) async {
     setState(() {
@@ -53,26 +34,42 @@ class _SignUpPageState extends State<SignUpPage> {
 
     String email = _emailController.text.trim();
     String password = _passwordController.text.trim();
+    String age = _ageController.text.trim();
+    String dob = _dobController.text.trim();
+    String gender = _genderController.text.trim();
+    String phone = _phoneController.text.trim();
 
-    bool success = await saveUser(email, password);
+    try {
+      final user = await AuthService.signUpWithEmail(email, password);
 
-    if (success) {
-      await AuthService.setLoggedIn(true, role); // Set role accordingly
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const AuthenticationWrapper(),
-          ),
+      if (user != null) {
+        // Save full profile including role
+        await AuthService.saveUserProfile(
+          user.uid,
+          role,
+          age: age,
+          dob: dob,
+          gender: gender,
+          phone: phone,
         );
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AuthenticationWrapper(),
+            ),
+          );
+        }
       }
-    } else {
+    } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = "Email already exists! Please log in.";
+        _errorMessage = e.toString().replaceAll("Exception: ", "");
       });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -297,26 +294,26 @@ class _SignUpPageState extends State<SignUpPage> {
                   _isLoading
                       ? const Center(child: CircularProgressIndicator(color: Colors.white))
                       : ElevatedButton(
-                          onPressed: () => _signUp(UserRole.MentalHealthProfessional),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                              vertical: screenHeight * 0.02,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Sign Up as Professional',
-                            style: TextStyle(
-                              fontSize: AppConstants.mediumFontSize,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                    onPressed: () => _signUp(UserRole.MentalHealthProfessional),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        vertical: screenHeight * 0.02,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Sign Up as Professional',
+                      style: TextStyle(
+                        fontSize: AppConstants.mediumFontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
 
                   SizedBox(height: screenHeight * 0.02),
 
@@ -324,26 +321,26 @@ class _SignUpPageState extends State<SignUpPage> {
                   _isLoading
                       ? const Center(child: CircularProgressIndicator(color: Colors.white))
                       : ElevatedButton(
-                          onPressed: () => _signUp(UserRole.RegularUser),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(
-                              vertical: screenHeight * 0.02,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: const Text(
-                            'Sign Up as User',
-                            style: TextStyle(
-                              fontSize: AppConstants.mediumFontSize,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                    onPressed: () => _signUp(UserRole.RegularUser),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(
+                        vertical: screenHeight * 0.02,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppConstants.borderRadius),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'Sign Up as User',
+                      style: TextStyle(
+                        fontSize: AppConstants.mediumFontSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
 
                   SizedBox(height: screenHeight * 0.02),
 

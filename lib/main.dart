@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart'; // add this
-import 'firebase_options.dart'; // add this
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:therapylink/Views/bottomnav.dart';
 import 'package:therapylink/Views/login.dart';
-import 'auth.dart';
+import 'auth.dart' as auth;
 import 'Views/professional_dashboard.dart';
 import 'utils/user_role.dart';
-
+import 'dart:core';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ✅ Initialize Firebase with auto-generated options
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  runApp(const MyApp());
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    runApp(const MyApp());
+  } catch (e) {
+    print('Firebase initialization error: $e');
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -38,59 +41,49 @@ class MyApp extends StatelessWidget {
 
 class AuthenticationWrapper extends StatelessWidget {
   const AuthenticationWrapper({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: AuthService.isLoggedIn(),
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance
+          .authStateChanges(), // Replaces manual login check
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        if (snapshot.hasError) {
-          return const Scaffold(
-            body: Center(
-              child: Text('Error checking authentication state'),
-            ),
-          );
+        final user = snapshot.data;
+
+        if (user == null) {
+          return const LoginPage(); // User is not logged in
         }
 
-        final bool isLoggedIn = snapshot.data ?? false;
-        if (isLoggedIn) {
-          return FutureBuilder<UserRole?>(
-            future: AuthService.getUserRole(),
-            builder: (context, roleSnapshot) {
-              if (roleSnapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              }
+        // User is logged in – now get their role from Firestore
+        return FutureBuilder<UserRole?>(
+          future: auth.AuthService.getUserRole(user.uid),
+          builder: (context, roleSnapshot) {
+            if (roleSnapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
 
-              if (roleSnapshot.hasError || roleSnapshot.data == null) {
-                return const Scaffold(
-                  body: Center(
-                    child: Text('Error checking user role'),
-                  ),
-                );
-              }
+            if (roleSnapshot.hasError || roleSnapshot.data == null) {
+              return const Scaffold(
+                body: Center(child: Text('Error fetching user role')),
+              );
+            }
 
-              final UserRole role = roleSnapshot.data!;
-              if (role == UserRole.MentalHealthProfessional) {
-                return const ProfessionalDashboard();
-              } else {
-                return const GoogleBottomBar(); // Navigate to MainMenu for regular users
-              }
-            },
-          );
-        } else {
-          return const LoginPage(); // Replace with your login page
-        }
+            final role = roleSnapshot.data!;
+            if (role == UserRole.MentalHealthProfessional) {
+              return const ProfessionalDashboard();
+            } else {
+              return const GoogleBottomBar(); // Replace with your actual home for regular users
+            }
+          },
+        );
       },
     );
   }
