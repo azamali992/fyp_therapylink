@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "975276530329",
+    "firebase_url": "https://therapylink69-default-rtdb.firebaseio.com",
     "project_id": "therapylink69",
     "storage_bucket": "therapylink69.firebasestorage.app"
   },
@@ -13,6 +14,14 @@
         }
       },
       "oauth_client": [
+        {
+          "client_id": "975276530329-0eqhs7ffchjdd00fsovmvolevkqhemab.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.chatbot",
+            "certificate_hash": "4ad949e0573524d6f3c38c2d3ff2d4c6f07f256a"
+          }
+        },
         {
           "client_id": "975276530329-5u9pf583f3jun8orsrhgvm1op18hvh31.apps.googleusercontent.com",
           "client_type": 3
