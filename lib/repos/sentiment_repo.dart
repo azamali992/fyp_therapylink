@@ -1,180 +1,128 @@
+// lib/sentiment_repo.dart
 // ignore_for_file: avoid_print
 
 import 'package:dio/dio.dart';
 import 'dart:convert';
 import 'dart:async';
 
+// Firebase imports
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class SentimentRepo {
-  // Track API calls to prevent rate limiting
-  static DateTime _lastApiCall =
-      DateTime.now().subtract(const Duration(minutes: 1));
-  static int _apiCallsInLastMinute = 0;
-  static const int _maxCallsPerMinute = 5;
+  // Your sentiment-analysis API endpoint
+  static const String _endpoint =
+      'https://sentiment-analysis-ubqy.onrender.com/detect_emotion';
 
-  // Simple local sentiment analysis as fallback
-  static String _localSentimentAnalysis(String text) {
-    text = text.toLowerCase();
-
-    // Define positive and negative word lists
-    final positiveWords = [
-      'good',
-      'great',
-      'happy',
-      'excellent',
-      'wonderful',
-      'amazing',
-      'love',
-      'enjoy',
-      'glad',
-      'pleased',
-      'joy',
-      'hope',
-      'excited',
-      'grateful',
-      'thankful',
-      'positive',
-      'awesome',
-      'fantastic',
-      'terrific',
-      'delighted',
-      'satisfied',
-      'proud',
-    ];
-
-    final negativeWords = [
-      'bad',
-      'sad',
-      'angry',
-      'upset',
-      'terrible',
-      'horrible',
-      'hate',
-      'dislike',
-      'unhappy',
-      'disappointed',
-      'sorry',
-      'regret',
-      'worried',
-      'anxious',
-      'negative',
-      'depressed',
-      'frustrated',
-      'annoyed',
-      'miserable',
-      'awful',
-      'poor',
-      'fail',
-    ];
-
-    int positiveCount = 0;
-    int negativeCount = 0;
-
-    for (final word in positiveWords) {
-      if (text.contains(word)) {
-        positiveCount++;
-      }
-    }
-
-    for (final word in negativeWords) {
-      if (text.contains(word)) {
-        negativeCount++;
-      }
-    }
-
-    if (positiveCount > negativeCount) {
-      return 'pos';
-    } else if (negativeCount > positiveCount) {
-      return 'neg';
-    } else {
-      return 'neu';
-    }
+  /// Saves one record into:
+  ///   users/{uid}/sentiments/{autoId}
+  static Future<void> _saveSentimentToFirestore({
+    required String uid,
+    required String text,
+    required String sentiment,
+  }) async {
+    print('🔑 Saving sentiment for user $uid: $sentiment');
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('sentiments')
+        .add({
+      'text': text,
+      'sentiment': sentiment,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+    print('✅ Saved to users/$uid/sentiments');
   }
 
+  /// Local fallback if the API totally fails
+  static String _localSentimentAnalysis(String text) {
+    final normalized = text.toLowerCase();
+
+    final positiveWords = [
+      'good', 'great', 'happy', 'excellent', 'wonderful',
+      'amazing', 'love', 'enjoy', 'glad', 'pleased',
+      'joy', 'hope', 'excited', 'grateful', 'thankful',
+      'positive', 'awesome', 'fantastic', 'terrific',
+      'delighted', 'satisfied', 'proud','kush' 'successful',
+    ];
+    final negativeWords = [
+      'bad', 'sad', 'angry', 'upset', 'terrible',
+      'horrible', 'hate', 'dislike', 'unhappy', 'disappointed',
+      'sorry', 'regret', 'worried', 'anxious', 'negative',
+      'depressed', 'frustrated', 'annoyed', 'miserable',
+      'awful', 'poor', 'fail',
+    ];
+
+    int pos = 0, neg = 0;
+    for (var w in positiveWords) {
+      if (RegExp(r'\b' + w + r'\b').hasMatch(normalized)) pos++;
+    }
+    for (var w in negativeWords) {
+      if (RegExp(r'\b' + w + r'\b').hasMatch(normalized)) neg++;
+    }
+
+    print('Local counts → pos: $pos, neg: $neg');
+    if (pos > neg) return 'pos';
+    if (neg > pos) return 'neg';
+    return 'neu';
+  }
+
+  /// Analyze the sentiment of [text], then save it under the signed-in user.
+  /// Returns one of: 'pos', 'neg', 'neu'
   static Future<String> analyzeSentiment(String text) async {
-    // First check if we should use the API or fallback
-    final now = DateTime.now();
-    final timeSinceLastCall = now.difference(_lastApiCall);
+    print('📝 Analyzing sentiment for: "$text"');
 
-    // Reset counter if it's been more than a minute
-    if (timeSinceLastCall.inSeconds >= 60) {
-      _apiCallsInLastMinute = 0;
-    }
-
-    // If we've made too many calls, use the fallback
-    if (_apiCallsInLastMinute >= _maxCallsPerMinute) {
-      print('Rate limit reached, using local sentiment analysis');
-      return _localSentimentAnalysis(text);
-    }
-
-    // Track this API call
-    _lastApiCall = now;
-    _apiCallsInLastMinute++;
+    String sentiment;
 
     try {
-      final dio = Dio();
+      // 1) Call the remote API
+      final response = await Dio().post(
+        _endpoint,
+        data: jsonEncode({'text': text}),
+        options: Options(
+          headers: {'Content-Type': 'application/json'},
+          sendTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 10),
+        ),
+      );
 
-      // Add retry logic
-      String result = '';
-      Exception? lastError;
+      print('🌐 API status: ${response.statusCode}');
+      print('🌐 API raw data: ${response.data}');
 
-      for (int attempt = 0; attempt < 3; attempt++) {
-        try {
-          print('Making API request attempt ${attempt + 1}');
+      var data = response.data;
+      if (data is String) data = jsonDecode(data);
 
-          final response = await dio.post(
-            'https://sentiment-analysis-ubqy.onrender.com/detect_emotion',
-            data: jsonEncode({'text': text}),
-            options: Options(
-              headers: {'Content-Type': 'application/json'},
-              sendTimeout: const Duration(seconds: 10),
-              receiveTimeout: const Duration(seconds: 10),
-            ),
-          );
-
-          print('Sentiment API status: ${response.statusCode}');
-          print('Sentiment API raw data: ${response.data}');
-
-          dynamic data = response.data;
-          if (data is String) {
-            try {
-              data = jsonDecode(data);
-            } catch (e) {
-              print('Failed to decode response string: $e');
-              throw Exception('Failed to decode response');
-            }
-          }
-
-          if (response.statusCode == 200 &&
-              data != null &&
-              data is Map<String, dynamic>) {
-            final emotion = data['emotion'];
-            if (emotion != null && emotion is String && emotion.isNotEmpty) {
-              return emotion;
-            }
-          }
-
-          // If we got here, something was wrong with the response
-          throw Exception('Invalid or missing emotion in response');
-        } catch (e) {
-          lastError = e is Exception ? e : Exception(e.toString());
-          print('Attempt ${attempt + 1} failed: $e');
-
-          // Wait before next retry, with exponential backoff
-          if (attempt < 2) {
-            // Only wait if we're going to retry
-            final waitTime = Duration(milliseconds: 500 * (attempt + 1));
-            print('Waiting ${waitTime.inMilliseconds}ms before retry');
-            await Future.delayed(waitTime);
-          }
-        }
+      if (response.statusCode == 200 &&
+          data is Map<String, dynamic> &&
+          data['emotion'] is String) {
+        sentiment = data['emotion'] as String;
+        print('🎯 API returned: $sentiment');
+      } else {
+        throw Exception('Invalid API response');
       }
-
-      // If all retries failed, use local analysis
-      print('All API attempts failed, using local sentiment analysis');
-      return _localSentimentAnalysis(text);
     } catch (e) {
-      print('Sentiment API error: $e');
-      return _localSentimentAnalysis(text);
+      // 2) On any error, fallback locally
+      print('⚠️ API error: $e');
+      sentiment = _localSentimentAnalysis(text);
+      print('🛠️ Fallback sentiment: $sentiment');
     }
+
+    // 3) Save result under the current user
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        await _saveSentimentToFirestore(
+          uid: user.uid,
+          text: text,
+          sentiment: sentiment,
+        );
+      } catch (e) {
+        print('❌ Firestore write failed: $e');
+      }
+    } else {
+      print('🚨 No user signed in—cannot save sentiment.');
+    }
+
+    return sentiment;
   }
 }
