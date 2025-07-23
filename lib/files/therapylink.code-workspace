@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "therapylink",
+			"path": "../.."
+		},
+		{
+			"name": "assets",
+			"path": "../../../../project/chatbot/assets"
+		}
+	],
+	"settings": {}
+}

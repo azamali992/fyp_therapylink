@@ -1,0 +1,262 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:dio/dio.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'dart:math' show min;
+
+class FirebaseApis {
+  static FirebaseFirestore firestore = FirebaseFirestore.instance;
+  static FirebaseAuth auth = FirebaseAuth.instance;
+
+  // Save message under logged-in user
+  static Future<void> saveMessage(
+      String userId, String sender, String messageContent) async {
+    try {
+      DocumentReference userRef = firestore.collection('users').doc(userId);
+
+      await userRef.collection('messages').add({
+        "Sender": sender,
+        "MessageContent": messageContent,
+        "Timestamp": FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print("Error saving message: $e");
+    }
+  }
+
+  // Load messages for this user
+  static Future<List<Map<String, dynamic>>> getMessages(String userId) async {
+    try {
+      QuerySnapshot snapshot = await firestore
+          .collection('users')
+          .doc(userId)
+          .collection('messages')
+          .orderBy('Timestamp', descending: false)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => doc.data() as Map<String, dynamic>)
+          .toList();
+    } catch (e) {
+      print("Error retrieving messages: $e");
+      return [];
+    }
+  }
+
+  // Track API calls to prevent rate limiting
+  static DateTime _lastApiCall =
+      DateTime.now().subtract(const Duration(minutes: 1));
+  static int _apiCallsInLastMinute = 0;
+  static const int _maxCallsPerMinute = 5;
+
+  // Call Hugging Face API and save response
+  static Future<String> getBotResponse(
+      String userMessage, String userId) async {
+    try {
+      // Implement rate limiting
+      final now = DateTime.now();
+      final timeSinceLastCall = now.difference(_lastApiCall);
+
+      // Reset counter if it's been more than a minute
+      if (timeSinceLastCall.inSeconds >= 60) {
+        _apiCallsInLastMinute = 0;
+      }
+
+      // Track this API call
+      _lastApiCall = now;
+      _apiCallsInLastMinute++;
+
+      // Check if we're exceeding rate limits
+      if (_apiCallsInLastMinute > _maxCallsPerMinute) {
+        print("API rate limit reached. Delaying request...");
+        await Future.delayed(const Duration(seconds: 10));
+      }
+
+      // Define system prompt to make the model act as a therapist
+      final systemPrompt =
+          "You are Dr. Fizza, a professional therapist with a PhD in psychology. "
+          "You have completed your supervised clinical hours and have passed your licensing exam. "
+          "Provide short, helpful responses to the user's messages. "
+          "If the user speaks in Roman Urdu, respond in Roman Urdu. "
+          "Act as a mature psychologist and maintain professional boundaries.";
+      
+      // Prepare the request payload
+      final payload = {
+        "system_prompt": systemPrompt,
+        "user_input": userMessage
+      };
+      
+      print("Request payload: $payload");
+      
+      // Try with standard HTTP package which is more reliable for certain environments
+      print("Making API request with http package...");
+      try {
+        // Use only the http package which has better stability on some platforms
+        final client = http.Client();
+        final httpResponse = await client.post(
+          Uri.parse("https://huggingfacerag.onrender.com/predict"),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(payload),
+        ).timeout(const Duration(seconds: 180)); // 3 minute timeout
+        
+        print("HTTP status code: ${httpResponse.statusCode}");
+        print("HTTP response body length: ${httpResponse.body.length}");
+        
+        if (httpResponse.statusCode >= 200 && httpResponse.statusCode < 300) {
+          try {
+            final Map<String, dynamic> jsonResponse = jsonDecode(httpResponse.body);
+            final String botResponse = jsonResponse['response'] ?? "No response field found";
+            print("Successfully parsed response: ${botResponse.substring(0, min(50, botResponse.length))}...");
+            await saveMessage(userId, "bot", botResponse);
+            client.close();
+            return botResponse;
+          } catch (jsonError) {
+            print("Error parsing JSON response: $jsonError");
+            client.close();
+            throw jsonError;
+          }
+        } else {
+          print("HTTP request failed with status ${httpResponse.statusCode}");
+          client.close();
+          throw Exception("API returned error status: ${httpResponse.statusCode}");
+        }
+      } catch (httpError) {
+        print("HTTP request error: $httpError");
+        throw httpError; // Let the error be caught by the outer catch block
+      }
+
+      print("API Response Status: ${response.statusCode}");
+      print("API Response Data: ${response.data}");
+
+      print("Dio response status code: ${response.statusCode}");
+      print("Dio response data type: ${response.data.runtimeType}");
+      
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        // Extract the bot response from your API's response format
+        String botResponse = '';
+        
+        try {
+          if (response.data is Map) {
+            print("Response is a Map: ${response.data}");
+            botResponse = response.data['response']?.toString() ?? "";
+            
+            if (botResponse.isEmpty) {
+              // Try other common API response formats
+              botResponse = response.data['result']?.toString() ?? 
+                            response.data['message']?.toString() ?? 
+                            response.data['text']?.toString() ?? 
+                            response.data['content']?.toString() ?? 
+                            response.data['output']?.toString() ?? 
+                            "Error: Unable to parse response";
+            }
+          } else if (response.data is String) {
+            print("Response is a String, attempting to parse as JSON");
+            try {
+              final Map<String, dynamic> jsonData = jsonDecode(response.data);
+              botResponse = jsonData['response']?.toString() ?? 
+                           jsonData['result']?.toString() ?? 
+                           jsonData['message']?.toString() ?? 
+                           jsonData['text']?.toString() ?? 
+                           "Error: Unable to parse JSON response";
+            } catch (jsonError) {
+              // If parsing as JSON fails, use the string directly
+              print("JSON parsing failed, using raw string response");
+              botResponse = response.data;
+            }
+          } else {
+            print("Unexpected response format: ${response.data.runtimeType}");
+            return "Sorry, I couldn't understand the response format.";
+          }
+          
+          print("Extracted bot response: $botResponse");
+          
+          if (botResponse.isNotEmpty) {
+            // Save the bot's response to Firestore
+            await saveMessage(userId, "bot", botResponse);
+            return botResponse;
+          } else {
+            return "Sorry, I couldn't generate a response at this time.";
+          }
+        } catch (parseError) {
+          print("Error parsing response: $parseError");
+          return "I apologize, but I encountered an error processing the response.";
+        }
+      } else {
+        print("Error status code: ${response.statusCode}");
+        return "Sorry, there was a problem with the server response.";
+      }
+    } catch (e) {
+      print("Error generating bot response: $e");
+      
+      // Attempt to use local fallback when API fails
+      try {
+        print("Attempting local fallback response generation");
+        
+        // Simple fallback logic for common greetings
+        if (userMessage.toLowerCase().contains('hello') || 
+            userMessage.toLowerCase().contains('hi') || 
+            userMessage.toLowerCase().contains('hey')) {
+          return "Hello! I'm Dr. Fizza. How are you feeling today?";
+        }
+        
+        if (userMessage.toLowerCase().contains('how are you')) {
+          return "I'm here and ready to listen. More importantly, how are you feeling today?";
+        }
+        
+        if (userMessage.toLowerCase().contains('thank')) {
+          return "You're welcome! I'm here to support you on your journey.";
+        }
+        
+        if (userMessage.toLowerCase().contains('bye') || 
+            userMessage.toLowerCase().contains('goodbye')) {
+          return "Take care of yourself. Remember that healing takes time, and I'm here whenever you need to talk.";
+        }
+      } catch (fallbackError) {
+        print("Fallback response generation failed: $fallbackError");
+      }
+
+      // More detailed error handling based on exception type
+      if (e is DioException) {
+        print("DioException type: ${e.type}");
+        
+        switch (e.type) {
+          case DioExceptionType.connectionTimeout:
+            return "I'm having trouble connecting to my resources right now. Could we try again in a few moments?";
+            
+          case DioExceptionType.sendTimeout:
+            return "I'm experiencing some delays in my response system. Let's give it a moment and try again.";
+            
+          case DioExceptionType.receiveTimeout:
+            return "I need a bit more time to formulate my thoughts. Let's continue our conversation in a moment.";
+            
+          case DioExceptionType.badResponse:
+            print("Bad response, status: ${e.response?.statusCode}");
+            
+            // If we hit a rate limit (429 Too Many Requests)
+            if (e.response?.statusCode == 429) {
+              print("Rate limit hit. Retrying after delay...");
+              await Future.delayed(const Duration(seconds: 5));
+              
+              try {
+                // Simple retry once with a fallback response
+                return "I'm currently experiencing high demand. Could you please repeat your question in a moment?";
+              } catch (retryError) {
+                print("Retry also failed: $retryError");
+              }
+            }
+            return "I'm having difficulty processing your request right now.";
+            
+          case DioExceptionType.cancel:
+            return "Our conversation was unexpectedly interrupted. Let's continue where we left off.";
+            
+          default:
+            return "I'm having some technical difficulties right now.";
+        }
+      }
+
+      // Return a user-friendly error message
+      return "I apologize, but I'm having trouble responding right now. Let's try again in a few moments.";
+    }
+  }
+}
