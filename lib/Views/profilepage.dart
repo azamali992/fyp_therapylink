@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:therapylink/Views/stress_relieving.dart';
 import 'package:therapylink/Views/profile_info.dart';
+import 'package:therapylink/Views/moodanalysis.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
@@ -85,7 +86,8 @@ class _ProfilePageState extends State<ProfilePage>
             // Basic profile info
             _name = userData['fullName'] ?? userData['name'] ?? 'User';
             _email = user.email ?? 'user@example.com';
-            _currentMood = userData['currentMood'] ?? 'Happy';
+
+            // Don't set _currentMood here anymore as it will be determined by sentiment data
 
             // Additional profile details from profile_info.dart approach
             _dob = userData['dob'] ?? '';
@@ -108,28 +110,11 @@ class _ProfilePageState extends State<ProfilePage>
                 print('Error calculating age: $e');
               }
             }
-
-            // If mood data exists in Firestore, use it - otherwise keep defaults
-            if (userData['moodLevels'] != null) {
-              final moodData = userData['moodLevels'] as Map<String, dynamic>;
-              _moodLevels = moodData.map((key, value) {
-                // Handle both formats: decimals (0.0-1.0) or integers (0-100)
-                int intValue;
-                if (value is int) {
-                  intValue = value;
-                } else if (value is double) {
-                  intValue = (value * 100).round();
-                } else if (value is num) {
-                  intValue = (value.toDouble() * 100).round();
-                } else {
-                  // Fallback if the value is neither int nor double
-                  intValue = 50; // Default to 50%
-                }
-                return MapEntry(key, intValue);
-              });
-            }
           });
         }
+
+        // Load sentiment data after user data is loaded
+        await _loadSentimentData();
       }
     } catch (e) {
       print('Error loading user data: $e');
@@ -137,6 +122,71 @@ class _ProfilePageState extends State<ProfilePage>
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadSentimentData() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // Get sentiments from Firestore
+      final querySnapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('sentiments')
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      // Count for each sentiment type
+      int posCount = 0;
+      int negCount = 0;
+      int neuCount = 0;
+      int totalCount = 0;
+
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final sentiment = (data['sentiment'] as String).toLowerCase();
+
+        if (sentiment == 'pos' || sentiment == 'positive') {
+          posCount++;
+        } else if (sentiment == 'neg' || sentiment == 'negative') {
+          negCount++;
+        } else if (sentiment == 'neu' || sentiment == 'neutral') {
+          neuCount++;
+        }
+        totalCount++;
+      }
+
+      // Calculate percentages (defaults to 0 if no sentiments)
+      int posPercentage =
+          totalCount > 0 ? ((posCount / totalCount) * 100).round() : 0;
+      int negPercentage =
+          totalCount > 0 ? ((negCount / totalCount) * 100).round() : 0;
+      int neuPercentage =
+          totalCount > 0 ? ((neuCount / totalCount) * 100).round() : 0;
+
+      // Update mood levels with real sentiment data
+      setState(() {
+        _moodLevels = {
+          'Positive': posPercentage,
+          'Negative': negPercentage,
+          'Neutral': neuPercentage,
+        };
+
+        // Update current mood based on most frequent sentiment
+        if (totalCount > 0) {
+          if (posCount >= negCount && posCount >= neuCount) {
+            _currentMood = 'Positive';
+          } else if (negCount >= posCount && negCount >= neuCount) {
+            _currentMood = 'Negative';
+          } else {
+            _currentMood = 'Neutral';
+          }
+        }
+      });
+    } catch (e) {
+      print('Error loading sentiment data: $e');
     }
   }
 
