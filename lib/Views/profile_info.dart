@@ -19,11 +19,12 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
   final _formKey = GlobalKey<FormState>();
   bool _isEditing = false;
 
-  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
+  final TextEditingController _usernameController =
+      TextEditingController(); // New controller
 
   String _gender = 'Male';
   String _selectedCountryCode = '+92';
@@ -46,13 +47,14 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
       if (doc.exists) {
         final data = doc.data()!;
         setState(() {
-          _nameController.text = data['fullName'] ?? '';
           _emailController.text = user.email ?? '';
           _dobController.text = data['dob'] ?? '';
           _phoneController.text = data['phone'] ?? '';
           _gender = data['gender'] ?? 'Male';
           _userRole = data['role'] ?? '';
           _countryName = data['country'] ?? 'Pakistan';
+          _usernameController.text = data['username'] ?? ''; // Load username
+
           if (_dobController.text.isNotEmpty) {
             DateTime dob = DateTime.parse(_dobController.text);
             _ageController.text = (DateTime.now().year - dob.year).toString();
@@ -117,11 +119,12 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                       .collection('users')
                       .doc(user.uid)
                       .update({
-                    'fullName': _nameController.text.trim(),
                     'dob': _dobController.text.trim(),
                     'gender': _gender,
                     'phone': _phoneController.text.trim(),
                     'country': _countryName,
+                    'username':
+                        _usernameController.text.trim(), // Save username
                   });
                   ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Profile updated!")));
@@ -138,7 +141,9 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
           padding: const EdgeInsets.all(20),
           children: [
             _sectionHeader("Personal Details"),
-            _buildTextField('Full Name', _nameController,
+
+            // Username field (new)
+            _buildTextField('Username', _usernameController,
                 validator: (value) => value!.isEmpty ? 'Required' : null),
             const SizedBox(height: 16),
             _buildTextField('Email', _emailController,

@@ -1,9 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Add this import
 
 import 'package:therapylink/bloc/chat_bloc.dart';
 import 'package:therapylink/utils/colors.dart';
@@ -23,6 +22,7 @@ class _ChatBotState extends State<ChatBot> {
   late final ChatBloc chatBloc;
   late String userId;
   String _username = "User";
+  // Add this property to store the last sentiment
   String _currentSentiment = 'Unknown';
 
   @override
@@ -35,11 +35,39 @@ class _ChatBotState extends State<ChatBot> {
       chatBloc = BlocProvider.of<ChatBloc>(context, listen: false);
       chatBloc.add(ChatLoadMessagesEvent(conversationId: userId));
       _retrieveUsername();
+      _loadLastSentiment(); // Add this line to load the last sentiment
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showIntroDialog();
     });
+  }
+
+  // Add this new method to load the last sentiment from Firestore
+  Future<void> _loadLastSentiment() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Query the last sentiment document, ordered by timestamp
+        final querySnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('sentiments')
+            .orderBy('timestamp', descending: true)
+            .limit(1)
+            .get();
+
+        if (querySnapshot.docs.isNotEmpty) {
+          final lastSentimentData = querySnapshot.docs.first.data();
+          setState(() {
+            _currentSentiment = lastSentimentData['sentiment'] ?? 'Unknown';
+          });
+          print('Last sentiment loaded: $_currentSentiment');
+        }
+      }
+    } catch (e) {
+      print('Error loading last sentiment: $e');
+    }
   }
 
   Future<void> _analyzeSentiment(String text) async {
@@ -85,28 +113,27 @@ class _ChatBotState extends State<ChatBot> {
   }
 
   Future<void> _retrieveUsername() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? email = prefs.getString("loggedInUserEmail");
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
 
-    if (email != null) {
-      String? storedUsername = await getUserName(email);
-      if (storedUsername != null) {
-        setState(() {
-          _username = storedUsername;
-        });
+        if (userDoc.exists) {
+          final userData = userDoc.data();
+          if (userData != null && userData['username'] != null) {
+            setState(() {
+              _username = userData['username'];
+            });
+          }
+        }
       }
+    } catch (e) {
+      print('Error retrieving username from Firestore: $e');
+      // Keep default "User" if there's an error
     }
-  }
-
-  Future<String?> getUserName(String email) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? storedUsers = prefs.getString("users");
-
-    if (storedUsers != null) {
-      Map<String, dynamic> users = json.decode(storedUsers);
-      return users[email];
-    }
-    return null;
   }
 
   void _sendMessage(String message) async {
@@ -284,102 +311,114 @@ class _ChatBotState extends State<ChatBot> {
                             DateTime.fromMillisecondsSinceEpoch(
                                 message.timestamp));
 
-                        return Column(
-                          crossAxisAlignment: isUser
-                              ? CrossAxisAlignment.end
-                              : CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 6),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (!isUser)
-                                    Container(
-                                      width: 18,
-                                      height: 18,
-                                      margin: const EdgeInsets.only(right: 6),
-                                      decoration: const BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Color.fromARGB(255, 121, 40, 202),
-                                            Color.fromARGB(255, 95, 10, 180),
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
+                        // Add this padding to the Column widget that contains each message
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            left: isUser
+                                ? 50.0
+                                : 16.0, // Less padding on user's side, more on AI's side
+                            right: isUser
+                                ? 16.0
+                                : 50.0, // Less padding on AI's side, more on user's side
+                          ),
+                          child: Column(
+                            crossAxisAlignment: isUser
+                                ? CrossAxisAlignment.end
+                                : CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 6),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (!isUser)
+                                      Container(
+                                        width: 18,
+                                        height: 18,
+                                        margin: const EdgeInsets.only(right: 6),
+                                        decoration: const BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Color.fromARGB(255, 121, 40, 202),
+                                              Color.fromARGB(255, 95, 10, 180),
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                        ),
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.psychology,
+                                            size: 12,
+                                            color: Colors.white,
+                                          ),
                                         ),
                                       ),
-                                      child: const Center(
-                                        child: Icon(
-                                          Icons.psychology,
-                                          size: 12,
-                                          color: Colors.white,
-                                        ),
+                                    Text(
+                                      isUser ? _username : "Psychologist",
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: isUser
+                                            ? Colors.grey[300]
+                                            : const Color.fromARGB(
+                                                255, 220, 200, 255),
                                       ),
                                     ),
-                                  Text(
-                                    isUser ? _username : "Psychologist",
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: isUser
-                                          ? Colors.grey[300]
-                                          : const Color.fromARGB(
-                                              255, 220, 200, 255),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                                constraints: BoxConstraints(
+                                  maxWidth:
+                                      MediaQuery.of(context).size.width * 0.75,
+                                ),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: Radius.circular(isUser ? 16 : 0),
+                                    topRight: Radius.circular(isUser ? 0 : 16),
+                                    bottomLeft: const Radius.circular(16),
+                                    bottomRight: const Radius.circular(16),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 5,
+                                      offset: const Offset(0, 3),
                                     ),
+                                  ],
+                                  color: isUser
+                                      ? const Color.fromARGB(255, 106, 27, 154)
+                                      : const Color.fromARGB(255, 74, 20, 140),
+                                ),
+                                child: Text(
+                                  message.parts.first.text,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                    height: 1.4,
                                   ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              constraints: BoxConstraints(
-                                maxWidth:
-                                    MediaQuery.of(context).size.width * 0.75,
-                              ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(isUser ? 16 : 0),
-                                  topRight: Radius.circular(isUser ? 0 : 16),
-                                  bottomLeft: const Radius.circular(16),
-                                  bottomRight: const Radius.circular(16),
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 5,
-                                    offset: const Offset(0, 3),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.only(bottom: 12, top: 2),
+                                child: Text(
+                                  timestamp,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[400],
+                                    fontStyle: FontStyle.italic,
                                   ),
-                                ],
-                                color: isUser
-                                    ? const Color.fromARGB(255, 106, 27, 154)
-                                    : const Color.fromARGB(255, 74, 20, 140),
-                              ),
-                              child: Text(
-                                message.parts.first.text,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  height: 1.4,
                                 ),
                               ),
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.only(bottom: 12, top: 2),
-                              child: Text(
-                                timestamp,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey[400],
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         );
                       },
                     );

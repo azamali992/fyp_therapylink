@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:therapylink/Views/stress_relieving.dart';
 import 'package:therapylink/Views/profile_info.dart';
 import 'package:therapylink/Views/moodanalysis.dart';
+import 'package:therapylink/Views/settings.dart'; // Import your settings page
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
@@ -83,11 +84,12 @@ class _ProfilePageState extends State<ProfilePage>
         if (userDoc.exists) {
           final userData = userDoc.data() as Map<String, dynamic>;
           setState(() {
-            // Basic profile info
-            _name = userData['fullName'] ?? userData['name'] ?? 'User';
+            // Use username as the primary display name
+            _name = userData['username'] ??
+                userData['fullName'] ??
+                userData['name'] ??
+                'User';
             _email = user.email ?? 'user@example.com';
-
-            // Don't set _currentMood here anymore as it will be determined by sentiment data
 
             // Additional profile details from profile_info.dart approach
             _dob = userData['dob'] ?? '';
@@ -586,15 +588,17 @@ class _ProfilePageState extends State<ProfilePage>
                                     alignment: Alignment.centerRight,
                                     child: TextButton(
                                       onPressed: () {
-                                        // Navigate to detailed mood analysis
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                                'Detailed mood analysis coming soon'),
-                                            duration: Duration(seconds: 2),
+                                        // Navigate to MoodAnalysisPage for detailed analysis
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const MoodAnalysisPage(),
                                           ),
-                                        );
+                                        ).then((_) {
+                                          // Refresh data when returning from the mood analysis page
+                                          _loadSentimentData();
+                                        });
                                       },
                                       style: TextButton.styleFrom(
                                         foregroundColor: Colors.white,
@@ -701,11 +705,12 @@ class _ProfilePageState extends State<ProfilePage>
                                   'Settings',
                                   Icons.settings,
                                   () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content:
-                                            Text('Settings page coming soon'),
-                                        duration: Duration(seconds: 2),
+                                    // Navigate to the existing settings page
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const SettingsPage(), // Use your existing SettingsPage
                                       ),
                                     );
                                   },
@@ -726,15 +731,66 @@ class _ProfilePageState extends State<ProfilePage>
                                 _buildActionButton(
                                   'Logout',
                                   Icons.logout,
-                                  () {
-                                    // Logout functionality would go here
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Logout functionality coming soon'),
-                                        duration: Duration(seconds: 2),
+                                  () async {
+                                    // Show confirmation dialog
+                                    final shouldLogout = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        backgroundColor: AppColors.bgpurple,
+                                        title: const Text(
+                                          'Logout',
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                        content: const Text(
+                                          'Are you sure you want to logout?',
+                                          style:
+                                              TextStyle(color: Colors.white70),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, false),
+                                            child: const Text(
+                                              'Cancel',
+                                              style: TextStyle(
+                                                  color: Colors.white70),
+                                            ),
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context, true),
+                                            child: const Text(
+                                              'Logout',
+                                              style: TextStyle(
+                                                  color: Colors.redAccent),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     );
+
+                                    // Proceed with logout if confirmed
+                                    if (shouldLogout == true) {
+                                      try {
+                                        await _auth.signOut();
+
+                                        // Navigate to login screen and clear all previous routes
+                                        Navigator.pushNamedAndRemoveUntil(
+                                          context,
+                                          '/login', // Make sure this route name matches your login route
+                                          (route) => false,
+                                        );
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content:
+                                                Text('Error logging out: $e'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    }
                                   },
                                 ),
                               ],
