@@ -22,6 +22,7 @@ dependencies:
   provider: ^6.1.0
   intl: ^0.20.2  # Ensure this is compatible with firebase_data_connect and firebase_auth
 
+
   geolocator: ^11.0.0
 
   local_auth: ^2.1.6
@@ -30,6 +31,8 @@ dependencies:
   flutter_inappwebview: ^6.1.5
   audioplayers: ^5.2.1
   emoji_picker_flutter: ^4.3.0
+
+  image_picker: ^1.0.7 
 
 
   # Permissions & Location

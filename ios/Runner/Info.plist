@@ -51,6 +51,11 @@
 	<string>This app needs access to your location for personalized features and safety.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>This app requires location access in the background to improve user experience.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Need camera access to take pictures for your profile</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Need photo library access to select profile picture</string>
+
 
 </dict>
 </plist>

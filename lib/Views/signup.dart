@@ -8,6 +8,9 @@ import 'package:therapylink/auth.dart';
 import '../utils/user_role.dart';
 import '../utils/constants.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -25,6 +28,8 @@ class _SignUpPageState extends State<SignUpPage>
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _genderController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
+  // XFile? _pickedImage;
   String? _selectedGender;
   bool _isLoading = false;
   String? _errorMessage;
@@ -66,6 +71,8 @@ class _SignUpPageState extends State<SignUpPage>
     _dobController.dispose();
     _genderController.dispose();
     _phoneController.dispose();
+    _usernameController.dispose();
+    _usernameController.dispose();
     super.dispose();
   }
 
@@ -112,6 +119,20 @@ class _SignUpPageState extends State<SignUpPage>
       final dob = _dobController.text;
       final gender = _selectedGender;
       final phone = _phoneController.text;
+      final username = _usernameController.text.trim();
+
+      // 🔁 STEP: Check if username is already taken in Firestore
+      final isTaken = await isUsernameTaken(username);
+      if (isTaken) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Username already taken';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Username already taken')),
+        );
+        return; // ⛔ Stop execution if taken
+      }
 
       final user = await AuthService.signUpWithEmail(email, password);
 
@@ -123,6 +144,7 @@ class _SignUpPageState extends State<SignUpPage>
           dob: dob,
           age: _ageController.text,
           phone: phone,
+          username: username,
         );
 
         if (mounted) {
@@ -292,6 +314,69 @@ class _SignUpPageState extends State<SignUpPage>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // Username field
+                                  _buildInputField(
+                                    controller: _usernameController,
+                                    label: "Username",
+                                    prefixIcon: Icons.person,
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return "Please enter a username";
+                                      }
+                                      if (value.trim().length < 3) {
+                                        return "Username must be at least 3 characters";
+                                      }
+                                      if (!RegExp(r'^[a-zA-Z0-9_]+$')
+                                          .hasMatch(value)) {
+                                        return "Only letters, numbers, and underscores allowed";
+                                      }
+                                      return null;
+                                    },
+                                  ),
+
+                                  SizedBox(height: screenHeight * 0.02),
+
+                                  // Profile Picture Picker
+                                  // Center(
+                                  //   child: GestureDetector(
+                                  //     onTap: () async {
+                                  //       final ImagePicker picker =
+                                  //           ImagePicker();
+                                  //       final XFile? image =
+                                  //           await picker.pickImage(
+                                  //               source: ImageSource.gallery);
+                                  //       if (image != null) {
+                                  //         setState(() {
+                                  //           _pickedImage = image;
+                                  //         });
+                                  //       }
+                                  //     },
+                                  //     child: Container(
+                                  //       height: 100,
+                                  //       width: 100,
+                                  //       decoration: BoxDecoration(
+                                  //         shape: BoxShape.circle,
+                                  //         border:
+                                  //             Border.all(color: Colors.white54),
+                                  //         image: _pickedImage != null
+                                  //             ? DecorationImage(
+                                  //                 image: FileImage(
+                                  //                     File(_pickedImage!.path)),
+                                  //                 fit: BoxFit.cover,
+                                  //               )
+                                  //             : null,
+                                  //         color: Colors.white10,
+                                  //       ),
+                                  //       child: _pickedImage == null
+                                  //           ? const Icon(Icons.add_a_photo,
+                                  //               color: Colors.white70)
+                                  //           : null,
+                                  //     ),
+                                  //   ),
+                                  // ),
+                                  // SizedBox(height: screenHeight * 0.02),
+
                                   // Email field
                                   _buildInputField(
                                     controller: _emailController,
@@ -430,8 +515,8 @@ class _SignUpPageState extends State<SignUpPage>
                                           const TextStyle(color: Colors.white),
                                       decoration: InputDecoration(
                                         labelText: "Phone Number",
-                                        labelStyle:
-                                            const TextStyle(color: Colors.white70),
+                                        labelStyle: const TextStyle(
+                                            color: Colors.white70),
                                         prefixIcon: const Icon(Icons.phone,
                                             color: Colors.white70),
                                         border: OutlineInputBorder(
@@ -718,6 +803,14 @@ class _SignUpPageState extends State<SignUpPage>
       ),
     );
   }
+}
+
+Future<bool> isUsernameTaken(String username) async {
+  final query = await FirebaseFirestore.instance
+      .collection('users')
+      .where('username', isEqualTo: username.trim())
+      .get();
+  return query.docs.isNotEmpty;
 }
 
 // Custom ShaderMask widget for text shimmer effect

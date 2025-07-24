@@ -127,6 +127,8 @@ class AuthService {
     required String dob,
     required String gender,
     required String phone,
+    required String username,
+    // required String profilePicUrl,
   }) async {
     await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'role': role.toString(),
@@ -134,6 +136,8 @@ class AuthService {
       'dob': dob,
       'gender': gender,
       'phone': phone,
+      'username': username,
+      // 'profilePicUrl': profilePicUrl,
     }, SetOptions(merge: true));
   }
 
