@@ -8,6 +8,7 @@ import 'package:therapylink/bloc/chat_bloc.dart';
 import 'package:therapylink/utils/colors.dart';
 import 'package:therapylink/Views/custom_app_bar.dart';
 import 'package:therapylink/repos/sentiment_repo.dart';
+import 'package:therapylink/Views/stress_relieving.dart';
 
 class ChatBot extends StatefulWidget {
   const ChatBot({super.key});
@@ -24,6 +25,15 @@ class _ChatBotState extends State<ChatBot> {
   String _username = "User";
   // Add this property to store the last sentiment
   String _currentSentiment = 'Unknown';
+
+  // Add these new variables
+  int _consecutiveNegativeCount = 0;
+  bool _hasShownStressPopup = false; // To prevent showing popup multiple times
+
+  // Add these variables for sentiment scoring
+  List<int> _recentSentimentScores = [];
+  int _sentimentThreshold = 10; // Redirect threshold
+  int _minChatsBeforeRedirect = 5; // Minimum chats before checking
 
   @override
   void initState() {
@@ -54,15 +64,38 @@ class _ChatBotState extends State<ChatBot> {
             .doc(user.uid)
             .collection('sentiments')
             .orderBy('timestamp', descending: true)
-            .limit(1)
+            .limit(_minChatsBeforeRedirect) // Get last 5 sentiments
             .get();
 
         if (querySnapshot.docs.isNotEmpty) {
+          // Load most recent sentiment for display
           final lastSentimentData = querySnapshot.docs.first.data();
           setState(() {
             _currentSentiment = lastSentimentData['sentiment'] ?? 'Unknown';
           });
           print('Last sentiment loaded: $_currentSentiment');
+
+          // Initialize recent sentiment scores
+          List<int> recentScores = [];
+          for (var doc in querySnapshot.docs) {
+            final sentiment = doc.data()['sentiment'] as String? ?? '';
+            int score = 0;
+            if (sentiment.toLowerCase() == 'pos' ||
+                sentiment.toLowerCase() == 'positive') {
+              score = 3;
+            } else if (sentiment.toLowerCase() == 'neg' ||
+                sentiment.toLowerCase() == 'negative') {
+              score = -3;
+            }
+            recentScores.add(score);
+          }
+
+          // Reverse to maintain chronological order
+          recentScores = recentScores.reversed.toList();
+
+          setState(() {
+            _recentSentimentScores = recentScores;
+          });
         }
       }
     } catch (e) {
@@ -75,9 +108,96 @@ class _ChatBotState extends State<ChatBot> {
       return;
     }
     final sentiment = await SentimentRepo.analyzeSentiment(text);
+    final normalizedSentiment = sentiment.toLowerCase().trim();
+
+    // Assign score based on sentiment
+    int sentimentScore = 0; // default for neutral
+    if (normalizedSentiment == 'pos' || normalizedSentiment == 'positive') {
+      sentimentScore = 3;
+    } else if (normalizedSentiment == 'neg' ||
+        normalizedSentiment == 'negative') {
+      sentimentScore = -3;
+    }
+
+    // Add score to recent scores list
+    _recentSentimentScores.add(sentimentScore);
+
+    // Keep only the last 5 sentiment scores
+    if (_recentSentimentScores.length > _minChatsBeforeRedirect) {
+      _recentSentimentScores.removeAt(0);
+    }
+
+    // Calculate average score if we have enough data points
+    if (_recentSentimentScores.length >= _minChatsBeforeRedirect) {
+      double averageScore = _recentSentimentScores.reduce((a, b) => a + b) /
+          _recentSentimentScores.length;
+      print('Average sentiment score: $averageScore');
+
+      // Check if average exceeds threshold
+      if (averageScore > 10 && !_hasShownStressPopup) {
+        _hasShownStressPopup = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showPositiveFeedbackPopup(); // New method for positive feedback
+        });
+      }
+    }
+
     setState(() {
       _currentSentiment = sentiment;
+
+      // Track consecutive negative sentiments (keep this for the stress relief popup)
+      if (normalizedSentiment == 'neg' || normalizedSentiment == 'negative') {
+        _consecutiveNegativeCount++;
+        print('Consecutive negative count: $_consecutiveNegativeCount');
+
+        // Show stress relief popup if reached threshold and not shown yet
+        if (_consecutiveNegativeCount >= 5 && !_hasShownStressPopup) {
+          _hasShownStressPopup = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showStressReliefPopup();
+          });
+        }
+      } else {
+        // Reset counter if sentiment is not negative
+        _consecutiveNegativeCount = 0;
+        _hasShownStressPopup =
+            false; // Reset popup flag when sentiment improves
+      }
     });
+
+    // Save the sentiment to Firestore for mood analysis
+    await _saveSentimentToFirestore(normalizedSentiment);
+  }
+
+  // Add this helper method to save sentiments to Firestore
+  Future<void> _saveSentimentToFirestore(String sentiment) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        // Calculate score
+        int sentimentScore = 0;
+        if (sentiment.toLowerCase() == 'pos' ||
+            sentiment.toLowerCase() == 'positive') {
+          sentimentScore = 3;
+        } else if (sentiment.toLowerCase() == 'neg' ||
+            sentiment.toLowerCase() == 'negative') {
+          sentimentScore = -3;
+        }
+
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .collection('sentiments')
+            .add({
+          'sentiment': sentiment,
+          'sentiment_score': sentimentScore, // Add this line
+          'timestamp': FieldValue.serverTimestamp(),
+          'message_count': FieldValue.increment(1),
+        });
+      }
+    } catch (e) {
+      print('Error saving sentiment to Firestore: $e');
+    }
   }
 
   void _showIntroDialog() {
@@ -560,5 +680,172 @@ class _ChatBotState extends State<ChatBot> {
       return 'Neutral';
     }
     return _currentSentiment;
+  }
+
+  void _showStressReliefPopup() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User must choose an option
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: AppColors.backgroundGradientStart,
+          title: const Row(
+            children: [
+              Text(
+                '🧘‍♀️',
+                style: TextStyle(fontSize: 24),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Time to Relax',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'I\'ve noticed you might be feeling stressed. Would you like to try some relaxation exercises to help you feel better?',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Reset the counter since user dismissed
+                setState(() {
+                  _consecutiveNegativeCount = 0;
+                  _hasShownStressPopup = false;
+                });
+              },
+              child: const Text(
+                'Not Now',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Navigate to stress relief page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const StressRelievingPage(),
+                  ),
+                ).then((_) {
+                  // Reset counter after visiting stress relief page
+                  setState(() {
+                    _consecutiveNegativeCount = 0;
+                    _hasShownStressPopup = false;
+                  });
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.backgroundGradientStart,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Yes, Help Me Relax',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showPositiveFeedbackPopup() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: AppColors.backgroundGradientStart,
+          title: const Row(
+            children: [
+              Text(
+                '🎉',
+                style: TextStyle(fontSize: 24),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Great Progress!',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'You\'ve been maintaining a very positive outlook! Would you like to see your mood analysis to track your progress?',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Reset the flag since user dismissed
+                setState(() {
+                  _hasShownStressPopup = false;
+                });
+              },
+              child: const Text(
+                'Not Now',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Navigate to mood analysis page
+                Navigator.pushNamed(context, '/mood_analysis').then((_) {
+                  // Reset flag after visiting mood analysis page
+                  setState(() {
+                    _hasShownStressPopup = false;
+                  });
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.backgroundGradientStart,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'View My Progress',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
