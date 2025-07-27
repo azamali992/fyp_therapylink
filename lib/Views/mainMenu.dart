@@ -1,10 +1,13 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:therapylink/Views/custom_app_bar.dart';
 import 'package:therapylink/Views/maps/map 2.dart';
 import 'package:therapylink/Views/moodanalysis.dart';
 import 'package:therapylink/Views/settings.dart';
 import 'package:therapylink/Views/voicechat.dart';
+import 'package:therapylink/bloc/chat_bloc.dart';
 import 'package:therapylink/utils/colors.dart';
 import 'package:therapylink/utils/menu_item_builder.dart';
 import 'stress_relieving.dart';
@@ -83,11 +86,19 @@ class _MainMenuState extends State<MainMenu>
     Future.delayed(const Duration(milliseconds: 300), () {
       switch (label) {
         case 'Voice Chat':
+          final chatBloc = context.read<ChatBloc?>();
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const VoiceChatPage()),
+            MaterialPageRoute(
+              builder: (context) => BlocProvider.value(
+                value: chatBloc ??
+                    ChatBloc(userId: FirebaseAuth.instance.currentUser!.uid),
+                child: const VoiceChatPage(),
+              ),
+            ),
           );
           break;
+
         case 'Settings':
           Navigator.push(
             context,

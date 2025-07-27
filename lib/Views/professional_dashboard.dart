@@ -45,7 +45,7 @@ class ProfessionalDashboard extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Professional Dashboard'),
+        title: const Text('Professional Dashboard', style: TextStyle(color: Colors.white)),
         backgroundColor: AppColors.bgpurple,
         actions: [
           IconButton(

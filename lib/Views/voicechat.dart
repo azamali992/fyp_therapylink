@@ -1,7 +1,16 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:google_speech/google_speech.dart';
+import 'package:lottie/lottie.dart';
+import 'package:rive/rive.dart' hide LinearGradient;
+import 'package:therapylink/bloc/chat_bloc.dart';
 import 'package:therapylink/utils/colors.dart';
-import 'package:therapylink/services/summary_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
 
 class VoiceChatPage extends StatefulWidget {
   const VoiceChatPage({super.key});
@@ -10,367 +19,299 @@ class VoiceChatPage extends StatefulWidget {
   State<VoiceChatPage> createState() => _VoiceChatPageState();
 }
 
-class _VoiceChatPageState extends State<VoiceChatPage> {
-  bool _isRecording = false;
-  final bool _isPlaying = false;
-  final List<ChatMessage> _messages = [];
+class _VoiceChatPageState extends State<VoiceChatPage>
+    with SingleTickerProviderStateMixin {
+  final FlutterTts _flutterTts = FlutterTts();
+  final AudioRecorder _recorder = AudioRecorder();
+  final String conversationId = "default_conversation";
 
-  // Add state variables for summarization
-  bool _isSummarizing = false;
-  String? _chatSummary;
+  late AnimationController _lottieController;
+  late RiveAnimationController _riveController;
+
+  bool _isListening = false;
+  String _aiResponse = "";
+  late SpeechToText _googleSpeech;
+
+  bool _isFirstLoad = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _lottieController = AnimationController(vsync: this);
+    _riveController = SimpleAnimation('idle');
+
+    _aiResponse = "Hello! How can I help you Today ?"; // ✅ Custom opening message
+
+    _initTTS();
+    _initGoogleSpeech();
+    requestMicPermission();
+
+    // ✅ Load previous messages so chatbot works
+    context
+        .read<ChatBloc>()
+        .add(ChatLoadMessagesEvent(conversationId: conversationId));
+  }
+
+  Future<void> requestMicPermission() async {
+    final status = await Permission.microphone.status;
+    if (!status.isGranted) {
+      final result = await Permission.microphone.request();
+      if (!result.isGranted) {
+        await openAppSettings();
+      }
+    }
+  }
+
+  void _initTTS() {
+    _flutterTts.setPitch(1.0);
+    _flutterTts.setSpeechRate(0.6);
+    _flutterTts.setCompletionHandler(() {
+      setState(() {
+        _riveController = SimpleAnimation('idle');
+      });
+    });
+  }
+
+  Future<void> _initGoogleSpeech() async {
+    final serviceAccount = ServiceAccount.fromString(
+      await rootBundle.loadString('assets/google_speech.json'),
+    );
+    _googleSpeech = SpeechToText.viaServiceAccount(serviceAccount);
+  }
+
+  Future<void> _toggleListening() async {
+    if (_isListening) {
+      await _stopAndTranscribe();
+    } else {
+      await _startRecording();
+    }
+  }
+
+  Future<void> _startRecording() async {
+    try {
+      if (!await _recorder.hasPermission()) {
+        await requestMicPermission();
+        return;
+      }
+
+      setState(() {
+        _isListening = true;
+        _aiResponse = "Listening...";
+        _riveController = SimpleAnimation('blink');
+      });
+
+      _lottieController.reset();
+      if (_lottieController.duration != null) {
+        _lottieController.repeat(period: _lottieController.duration);
+      }
+
+      final tempPath = "${Directory.systemTemp.path}/speech_recording.wav";
+
+      await _recorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.wav,
+          sampleRate: 16000,
+          numChannels: 1,
+        ),
+        path: tempPath,
+      );
+
+      print("🎤 Recording started: $tempPath");
+    } catch (e) {
+      print("❌ Error starting recording: $e");
+    }
+  }
+
+  Future<void> _stopAndTranscribe() async {
+    try {
+      final path = await _recorder.stop();
+      setState(() {
+        _isListening = false;
+        _aiResponse = "Thinking...";
+        _riveController = SimpleAnimation('idle');
+      });
+      _lottieController.reset();
+
+      if (path == null) {
+        setState(() {
+          _aiResponse = "No audio captured.";
+        });
+        return;
+      }
+
+      print("✅ Recording stopped, file saved: $path");
+      await _transcribeAudio(path);
+    } catch (e) {
+      print("❌ Error stopping recording: $e");
+      setState(() {
+        _aiResponse = "Recording failed.";
+      });
+    }
+  }
+
+  Future<void> _transcribeAudio(String path) async {
+    try {
+      final audioBytes = await File(path).readAsBytes();
+      final response = await _googleSpeech.recognize(
+        RecognitionConfig(
+          encoding: AudioEncoding.LINEAR16,
+          languageCode: 'en-US',
+          sampleRateHertz: 16000,
+          enableAutomaticPunctuation: true,
+          model: RecognitionModel.command_and_search,
+        ),
+        audioBytes,
+      );
+
+      if (response.results.isNotEmpty &&
+          response.results.first.alternatives.isNotEmpty) {
+        final text = response.results
+            .map((e) => e.alternatives.first.transcript)
+            .join(" ");
+
+        print("✅ Transcribed: $text");
+
+        setState(() {
+          _aiResponse = text;
+        });
+
+        context.read<ChatBloc>().add(ChatGenerateNewTextMessageEvent(
+              inputMessage: text.trim(),
+              conversationId: conversationId,
+            ));
+      } else {
+        print("❌ No speech detected");
+        setState(() {
+          _aiResponse = "Didn't catch that, try again.";
+        });
+      }
+    } catch (e) {
+      print("❌ Transcription error: $e");
+      setState(() {
+        _aiResponse = "Error processing speech.";
+      });
+    }
+  }
+
+  Future<void> _speak(String text) async {
+    await _flutterTts.stop();
+    setState(() {
+      _riveController = SimpleAnimation('talk');
+    });
+    await _flutterTts.speak(text);
+  }
+
+  @override
+  void dispose() {
+    _lottieController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double screenHeight = MediaQuery.of(context).size.height;
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Voice Chat",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
+        title: const Text("Psychologist", style: TextStyle(color: Colors.white)),
+        centerTitle: true,
         backgroundColor: AppColors.backgroundGradientStart,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          // Add summarize button
-          IconButton(
-            icon: _isSummarizing
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : const Icon(Icons.summarize, color: Colors.white),
-            onPressed: _isSummarizing ? null : _generateAndShowSummary,
-            tooltip: 'Summarize Conversation',
-          ),
-        ],
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
               AppColors.backgroundGradientStart,
-              AppColors.backgroundGradientEnd,
+              AppColors.backgroundGradientEnd
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: _messages.length,
-                itemBuilder: (context, index) {
-                  return _buildMessageBubble(_messages[index]);
-                },
-              ),
-            ),
-            _buildInputArea(),
-          ],
-        ),
-      ),
-    );
-  }
+        child: BlocConsumer<ChatBloc, ChatState>(
+          listener: (context, state) {
+            if (state is ChatSuccessState && state.messages.isNotEmpty) {
+              final lastMessage = state.messages.last;
 
-  Widget _buildMessageBubble(ChatMessage message) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Align(
-        alignment:
-            message.isUser ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          padding: const EdgeInsets.all(12.0),
-          decoration: BoxDecoration(
-            color: message.isUser ? AppColors.bgpurple : Colors.grey[800],
-            borderRadius: BorderRadius.circular(20.0),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                message.isUser ? 'You' : 'AI Assistant',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12.0,
-                ),
-              ),
-              const SizedBox(height: 4.0),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    message.isPlaying ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(width: 8.0),
-                  Container(
-                    width: 100,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(15.0),
-                    ),
-                    child: CustomPaint(
-                      painter: WaveformPainter(),
+              if (lastMessage.role == "model") {
+                if (_isFirstLoad) {
+                  // ✅ Do NOT override your custom text on first load
+                  _isFirstLoad = false;
+                  return;
+                }
+
+                setState(() {
+                  _aiResponse = lastMessage.parts.first.text;
+                });
+
+                _speak(lastMessage.parts.first.text);
+              }
+            }
+          },
+
+          builder: (context, state) {
+            String displayText = _isListening
+                ? "Listening..."
+                : (state is ChatLoadingState
+                    ? "Thinking..."
+                    : (_aiResponse.isNotEmpty
+                        ? _aiResponse
+                        : "Tap the mic to talk"));
+
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Center(
+                    child: RiveAnimation.asset(
+                      'assets/chatbot.riv',
+                      controllers: [_riveController],
+                      fit: BoxFit.contain,
+                      alignment: Alignment.center,
                     ),
                   ),
-                  const SizedBox(width: 8.0),
-                  Text(
-                    '0:${message.duration.toString().padLeft(2, '0')}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInputArea() {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              decoration: BoxDecoration(
-                color: Colors.grey[800],
-                borderRadius: BorderRadius.circular(30.0),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      _isRecording ? Icons.stop : Icons.mic,
-                      color: _isRecording ? Colors.red : Colors.white,
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        displayText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
-                    onPressed: _toggleRecording,
                   ),
-                  Expanded(
-                    child: _isRecording
-                        ? CustomPaint(
-                            painter: WaveformPainter(isRecording: true),
-                            size: const Size(double.infinity, 30),
-                          )
-                        : const Text(
-                            'Tap mic to start recording',
-                            style: TextStyle(color: Colors.white70),
-                          ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 36.0),
+                  child: GestureDetector(
+                    onTap: _toggleListening,
+                    child: Lottie.asset(
+                      'assets/mic_listening.json',
+                      controller: _lottieController,
+                      width: 300,
+                      height: 300,
+                      onLoaded: (composition) {
+                        _lottieController.duration = composition.duration;
+                        if (_isListening) {
+                          _lottieController
+                              .repeat(period: composition.duration);
+                        }
+                      },
+                    ),
                   ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8.0),
-          FloatingActionButton(
-            mini: true,
-            backgroundColor: AppColors.bgpurple,
-            onPressed: _sendMessage,
-            child: const Icon(Icons.send),
-          ),
-        ],
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
-
-  void _toggleRecording() {
-    setState(() {
-      _isRecording = !_isRecording;
-      if (!_isRecording) {
-        // Add a new message when stopping recording
-        _messages.add(ChatMessage(
-          isUser: true,
-          duration: 15,
-          isPlaying: false,
-        ));
-        // Simulate AI response
-        Future.delayed(const Duration(seconds: 1), () {
-          setState(() {
-            _messages.add(ChatMessage(
-              isUser: false,
-              duration: 12,
-              isPlaying: false,
-            ));
-          });
-        });
-      }
-    });
-  }
-
-  void _sendMessage() {
-    if (_isRecording) {
-      _toggleRecording();
-    }
-  }
-
-  // Generate and show summary
-  Future<void> _generateAndShowSummary() async {
-    setState(() {
-      _isSummarizing = true;
-    });
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please sign in to use this feature')),
-        );
-        setState(() {
-          _isSummarizing = false;
-        });
-        return;
-      }
-
-      // Get summary from service
-      final summary = await SummaryService.generateChatSummary(
-        messageLimit: 50,
-        summaryType: 'therapeutic',
-      );
-
-      setState(() {
-        _chatSummary = summary;
-        _isSummarizing = false;
-      });
-
-      // Show dialog with summary
-      _showSummaryDialog();
-    } catch (e) {
-      print('Error generating summary: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Failed to generate summary. Please try again.')),
-      );
-      setState(() {
-        _isSummarizing = false;
-      });
-    }
-  }
-
-  // Show summary dialog
-  void _showSummaryDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text(
-          'Conversation Summary',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: AppColors.backgroundGradientStart,
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Key insights from your conversation:',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _chatSummary ?? 'No summary available',
-                style: const TextStyle(
-                  color: Colors.white,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text(
-              'Close',
-              style: TextStyle(color: Colors.white70),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // Optional: Save or share the summary
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppColors.backgroundGradientStart,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text('Save Summary'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class ChatMessage {
-  final bool isUser;
-  final int duration;
-  bool isPlaying;
-
-  ChatMessage({
-    required this.isUser,
-    required this.duration,
-    required this.isPlaying,
-  });
-}
-
-class WaveformPainter extends CustomPainter {
-  final bool isRecording;
-
-  WaveformPainter({this.isRecording = false});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.5)
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round;
-
-    final width = size.width;
-    final height = size.height;
-    final centerY = height / 2;
-
-    for (var i = 0; i < width; i += 3) {
-      final amplitude = isRecording
-          ? (DateTime.now().millisecondsSinceEpoch % 1000) / 1000 * 10
-          : 5 + (i % 10);
-      canvas.drawLine(
-        Offset(i.toDouble(), centerY - amplitude),
-        Offset(i.toDouble(), centerY + amplitude),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => isRecording;
 }

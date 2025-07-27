@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "therapylink69",
+  "private_key_id": "00a7ebc3d3c4f37ae8988c56f6fcd3b297725fb1",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDKeUTnYJHG3lFc\nf+A0nkIEhdcDH1BktRFFB2E53H3e5LAGpZsUsopXb8AunW0kkZjYWQLWL737uVHk\neO/OPCCUUqQTDMJSTdTHt/sAgH4H/qtp+7skgUnGjKlVnMaxKcWvDySSa7B/VY4s\nMk72rp8ixCfYqoVyYarqj5Weczs6XDhZEXPXVk1ovB+F7UyFo/jZIbRChIc8zT3/\nlrNTWtC0xRDz4Mqi9tnDElAplxZ8ylTb7ZjuFDhzNmu7D9nUyGbkkX2knCFsdaxO\nWD4PXRfUK09PW88zEaI+fJ4PsD1UzPJxTJfaSuekogGbqPQTbvlBYz/RhnvHXJ8X\nmrsqyly1AgMBAAECggEAJrWXnErEpAol8PLLuROWmInECSdH9fD+G73k8yx57g63\nrpWjuAnIVB4b1m2ni6nAWIBv/+YBwunzw6PxaPLq4aCJGNFEJ3sU1pgQh1CJh9rD\nB9CmPzzuj2SeDS2beQx87FKPUeT/yeBf/Ygiu5u39ewdmBlFyQ/uHskTuEbciHP4\n3KcsevkbKr7+haumZ0/oRajmKifYfLN87Pp26AtFB1Ck8n+ctAzHIxf/jeouJHF4\nmfioRw/hUnsfl/ynwVc16/kDJVQVdZtXwTgp6EmnBvB2SEyt6bkinKKvQm70gcgU\ngSgTYjPVrFtVXJJBpzMs7MeVc1uTGjTxYbRxqjm6gQKBgQDzWQJnXXbTzemRLd8h\nbgPm4a77/fMeMSF6idKP+pxNrAQBKfzL6Aogs7gfC0qsLkXICVip14nT2qryHRP1\nLXpFXi6RkVJ5sf8+Xr0176IUeZ/EvOh9ztzxLyvtPeXX4PAZz+PBJBW64NlZGpxk\ngJlLX6bVdngm8aIojmQ7EmLA9QKBgQDVADi011Yb+qooK+YUZLKkFUZoJ1mwoJvi\nq5XxtRzYCfTCSbiIUx8VWlrIB33o+zHUw5mY9q8pjQW8wPKnL0JLrAXqDkw0CivI\n5aBXZnbQyxqe2wEmqQy6/o4ZvpcvbRZ33FqD5WP0ugmoT9ttk3N943EeoGFoZxwa\nzfLvZNzUwQKBgA+Tm/7H0cpe/NtpJ0Y5h5Bo082XhM9i77SrS8ohjY2/PAZjDKZ0\ntOlA98Es9NuunpLeXkmI3W6tKZIT4GoqPhBgpfR1a+UUSrVQVSY1r5dF7b8nJG6h\nJi1eCp7F/odiA5xzXS3IxIdQyzjT5jzcqnNTrRcu3SQJBYs5Chtp4t5dAoGAP6L9\nTio3s8xEIhRbfSRIqvUgP+Xhyf9yE1qoRbqSj4kJ8zILS89prft8u95hI8ZIsQRv\nU2AAHS3g1O/gj0pzSCBw8+ipo7KWOkNAkFwwi1ji7ysHQQGoqAV9dvuWN7kjyVOw\nR0+1eVxLnlmdeTNgge/9z+SitYp4vxlgx10fDQECgYEAgKOVGlJXCVxLVrkmpizB\nWMyuU5ECWBWLX+Md4KB//XLxD5A7sRk5ac5lAHyGnZM6H5U6KyhnJkgjGJOA99iW\nBiiYRvPWg0vb64JoqCQoz7+Sfj1vXrjC8EYNxA6IMSp8RDvMSv+5pOoEfmVT/sYk\nSYgx8lJR/nmCQSGSSyK5aps=\n-----END PRIVATE KEY-----\n",
+  "client_email": "flutter-speech-sa@therapylink69.iam.gserviceaccount.com",
+  "client_id": "102327066745536882912",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/flutter-speech-sa%40therapylink69.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
