@@ -3,13 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:therapylink/Views/login.dart';
 import '../utils/colors.dart';
-import '../utils/strings.dart';
 import 'package:therapylink/auth.dart';
 import '../utils/user_role.dart';
 import '../utils/constants.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
-import 'dart:io';
-import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -90,8 +87,7 @@ class _SignUpPageState extends State<SignUpPage>
               onPrimary: Colors.white,
               surface: Color.fromARGB(255, 55, 13, 104),
               onSurface: Colors.white,
-            ),
-            dialogBackgroundColor: const Color.fromARGB(255, 30, 10, 60),
+            ), dialogTheme: const DialogThemeData(backgroundColor: Color.fromARGB(255, 30, 10, 60)),
           ),
           child: child!,
         );

@@ -32,9 +32,7 @@ class _ChatBotState extends State<ChatBot> {
 
   // Add these variables for sentiment scoring
   List<int> _recentSentimentScores = [];
-  int _sentimentThreshold = 10; // Redirect threshold
-  int _minChatsBeforeRedirect = 5; // Minimum chats before checking
-
+  final int _minChatsBeforeRedirect = 5; // Minimum chats before checking  @override
   @override
   void initState() {
     super.initState();
@@ -346,8 +344,10 @@ class _ChatBotState extends State<ChatBot> {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      appBar:
-          CustomAppBar(screenWidth: screenWidth, screenHeight: screenHeight),
+      appBar: CustomAppBar(
+        screenWidth: screenWidth,
+        screenHeight: screenHeight,
+      ),
       body: Container(
         width: double.infinity,
         height: double.infinity,

@@ -76,7 +76,7 @@ class GooglePlacesService {
 
   /// Place Details (to get opening hours, phone)
   Future<Place> fetchPlaceDetails(Place place) async {
-    final fields =
+    const fields =
         'opening_hours,formatted_phone_number,international_phone_number';
     final url =
         'https://maps.googleapis.com/maps/api/place/details/json'

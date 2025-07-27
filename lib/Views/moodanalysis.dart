@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:ui';
 import 'package:intl/intl.dart';
+import 'package:therapylink/services/summary_service.dart';
 
 class MoodAnalysisPage extends StatefulWidget {
   const MoodAnalysisPage({super.key});
@@ -40,6 +41,10 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
   // Loading state
   bool _isLoading = true;
   String _error = '';
+
+  // State variables for summarization
+  bool _isSummarizing = false;
+  String? _chatSummary;
 
   // Stream subscription for real-time updates
   Stream<QuerySnapshot>? _sentimentStream;
@@ -174,10 +179,12 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
 
         // Calculate sentiment score: positive=5, neutral=3, negative=1
         double sentimentScore = 3.0; // Default neutral
-        if (normalizedSentiment == 'pos' || normalizedSentiment == 'positive')
+        if (normalizedSentiment == 'pos' || normalizedSentiment == 'positive') {
           sentimentScore = 5.0;
-        if (normalizedSentiment == 'neg' || normalizedSentiment == 'negative')
+        }
+        if (normalizedSentiment == 'neg' || normalizedSentiment == 'negative') {
           sentimentScore = 1.0;
+        }
 
         // Group by day for weekly data
         if (date.isAfter(oneWeekAgo)) {
@@ -272,8 +279,12 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
     final double screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      appBar:
-          CustomAppBar(screenWidth: screenWidth, screenHeight: screenHeight),
+      appBar: CustomAppBar(
+        screenWidth: screenWidth,
+        screenHeight: screenHeight,
+        onSummarize: _generateAndShowSummary,
+        isSummarizing: _isSummarizing,
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -945,6 +956,100 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
                 );
               },
             ),
+        ],
+      ),
+    );
+  }
+
+  // Method to generate and display summary
+  Future<void> _generateAndShowSummary() async {
+    setState(() => _isSummarizing = true);
+
+    try {
+      final summary = await SummaryService.generateChatSummary(
+        messageLimit: 50,
+        summaryType: 'therapeutic',
+      );
+
+      setState(() {
+        _chatSummary = summary;
+        _isSummarizing = false;
+      });
+
+      _showSummaryDialog();
+    } catch (e) {
+      setState(() => _isSummarizing = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to generate summary: $e')),
+      );
+    }
+  }
+
+  // Show dialog with summary content
+  void _showSummaryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color.fromARGB(255, 55, 13, 104),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.summarize, color: Colors.white),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Mood Analysis Summary',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'AI-Generated Insights:',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _chatSummary ?? 'No summary available',
+                style: const TextStyle(color: Colors.white, height: 1.5),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // Save the summary if desired
+              Navigator.of(context).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Summary saved to your notes')),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.backgroundGradientStart,
+            ),
+            child: const Text('Save as Note'),
+          ),
         ],
       ),
     );

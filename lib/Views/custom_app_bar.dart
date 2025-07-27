@@ -6,11 +6,15 @@ import 'package:therapylink/auth.dart';
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final double screenWidth;
   final double screenHeight;
+  final VoidCallback? onSummarize;
+  final bool isSummarizing;
 
   const CustomAppBar({
     super.key,
     required this.screenWidth,
     required this.screenHeight,
+    this.onSummarize,
+    this.isSummarizing = false,
   });
 
   @override
@@ -93,28 +97,68 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
 
-              // Logout button with improved styling
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
+              // Action buttons row
+              Row(
+                children: [
+                  // Summary button (only show if onSummarize is provided)
+                  if (onSummarize != null)
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: IconButton(
+                        onPressed: isSummarizing ? null : onSummarize,
+                        icon: isSummarizing
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.summarize,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                        tooltip: 'Summarize Conversation',
+                      ),
                     ),
-                  ],
-                ),
-                child: IconButton(
-                  onPressed: () => _showLogoutDialog(context),
-                  icon: const Icon(
-                    Icons.logout_rounded,
-                    color: Colors.white,
-                    size: 22,
+
+                  // Logout button with improved styling
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: IconButton(
+                      onPressed: () => _showLogoutDialog(context),
+                      icon: const Icon(
+                        Icons.logout_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                      tooltip: 'Logout',
+                    ),
                   ),
-                  tooltip: 'Logout',
-                ),
+                ],
               ),
             ],
           ),

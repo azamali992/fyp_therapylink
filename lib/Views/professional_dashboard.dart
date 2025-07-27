@@ -10,20 +10,23 @@ class ProfessionalDashboard extends StatelessWidget {
   const ProfessionalDashboard({super.key});
 
   final Map<String, Color> _buttonColors = const {
-    'View User Insights': Colors.blue,
+    'View User Insights': Colors.black,
     'Access Professional Resources': Colors.red,
     'Collaborate with System': Colors.orange,
+    'Patient Management': Colors.green,
   };
 
   final Map<String, bool> _isClicked = const {
     'View User Insights': false,
     'Access Professional Resources': false,
     'Collaborate with System': false,
+    'Patient Management': false,
   };
 
   void _handleMenuItemTap(BuildContext context, String label) {
     switch (label) {
       case 'View User Insights':
+      case 'Patient Management':
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const ViewUserInsightsPage()),
@@ -72,9 +75,9 @@ class ProfessionalDashboard extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: StaggeredGridView.countBuilder(
             crossAxisCount: 4,
-            mainAxisSpacing: 16.0,
-            crossAxisSpacing: 16.0,
-            itemCount: 3,
+            mainAxisSpacing: 32.0,
+            crossAxisSpacing: 20.0,
+            itemCount: 4,
             itemBuilder: (BuildContext context, int index) {
               String label;
               IconData icon;
@@ -87,12 +90,18 @@ class ProfessionalDashboard extends StatelessWidget {
                       'Emotional Trends and Sentiment Analysis\nAggregated Reports for Users (with consent)';
                   break;
                 case 1:
+                  label = 'Patient Management';
+                  icon = Icons.people;
+                  subLabel =
+                      'View patient profiles, chat summaries and appointment history';
+                  break;
+                case 2:
                   label = 'Access Professional Resources';
                   icon = Icons.book;
                   subLabel =
                       'Specialized Counseling Techniques\nCase Study Integration';
                   break;
-                case 2:
+                case 3:
                   label = 'Collaborate with System';
                   icon = Icons.group;
                   subLabel =
@@ -107,7 +116,7 @@ class ProfessionalDashboard extends StatelessWidget {
                 label: label,
                 subLabel: subLabel,
                 context: context,
-                height: 150.0,
+                height: 200.0,
                 width: 150.0,
                 baseFontSize: baseFontSize,
                 buttonColors: _buttonColors,
@@ -123,6 +132,8 @@ class ProfessionalDashboard extends StatelessWidget {
                 case 1:
                   return const StaggeredTile.count(4, 2);
                 case 2:
+                  return const StaggeredTile.count(4, 2);
+                case 3:
                   return const StaggeredTile.count(4, 2);
                 default:
                   return const StaggeredTile.count(1, 1);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:therapylink/Views/custom_app_bar.dart';
 import 'package:therapylink/utils/colors.dart';
+import 'package:therapylink/services/summary_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class VoiceChatPage extends StatefulWidget {
   const VoiceChatPage({super.key});
@@ -14,14 +15,45 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
   final bool _isPlaying = false;
   final List<ChatMessage> _messages = [];
 
+  // Add state variables for summarization
+  bool _isSummarizing = false;
+  String? _chatSummary;
+
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
     final double screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      appBar:
-          CustomAppBar(screenWidth: screenWidth, screenHeight: screenHeight),
+      appBar: AppBar(
+        title: const Text(
+          "Voice Chat",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: AppColors.backgroundGradientStart,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          // Add summarize button
+          IconButton(
+            icon: _isSummarizing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Icon(Icons.summarize, color: Colors.white),
+            onPressed: _isSummarizing ? null : _generateAndShowSummary,
+            tooltip: 'Summarize Conversation',
+          ),
+        ],
+      ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -193,6 +225,109 @@ class _VoiceChatPageState extends State<VoiceChatPage> {
     if (_isRecording) {
       _toggleRecording();
     }
+  }
+
+  // Generate and show summary
+  Future<void> _generateAndShowSummary() async {
+    setState(() {
+      _isSummarizing = true;
+    });
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please sign in to use this feature')),
+        );
+        setState(() {
+          _isSummarizing = false;
+        });
+        return;
+      }
+
+      // Get summary from service
+      final summary = await SummaryService.generateChatSummary(
+        messageLimit: 50,
+        summaryType: 'therapeutic',
+      );
+
+      setState(() {
+        _chatSummary = summary;
+        _isSummarizing = false;
+      });
+
+      // Show dialog with summary
+      _showSummaryDialog();
+    } catch (e) {
+      print('Error generating summary: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Failed to generate summary. Please try again.')),
+      );
+      setState(() {
+        _isSummarizing = false;
+      });
+    }
+  }
+
+  // Show summary dialog
+  void _showSummaryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          'Conversation Summary',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: AppColors.backgroundGradientStart,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Key insights from your conversation:',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _chatSummary ?? 'No summary available',
+                style: const TextStyle(
+                  color: Colors.white,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Optional: Save or share the summary
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.backgroundGradientStart,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Save Summary'),
+          ),
+        ],
+      ),
+    );
   }
 }
 

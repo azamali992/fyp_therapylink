@@ -3,11 +3,16 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:therapylink/utils/colors.dart';
 
 import 'google_places_service.dart';
+import 'professional_user.dart';
+import 'professional_user_service.dart';
 
 class MapScreen extends StatefulWidget {
+  const MapScreen({super.key});
+
   @override
   _MapScreenState createState() => _MapScreenState();
 }
@@ -26,9 +31,17 @@ class _MapScreenState extends State<MapScreen> {
 
   Place? _selectedClinic;
 
+  // Professional users
+  List<ProfessionalUser> _professionals = [];
+  bool _loadingProfessionals = false;
+  bool _showProfessionalsTab = false;
+
   final GooglePlacesService _placesService = GooglePlacesService(
     apiKey: 'AIzaSyBRGgGd3AhtZrH1ZWy3i80oA3XNvUf3JHE',
   );
+
+  final ProfessionalUserService _professionalService =
+      ProfessionalUserService();
 
   @override
   void initState() {
@@ -40,13 +53,42 @@ class _MapScreenState extends State<MapScreen> {
     await _ensureLocationEnabled();
     await _determinePosition();
     await _mergeFavsIntoCurrentList();
+
+    // Load registered professionals
+    _fetchRegisteredProfessionals();
+  }
+
+  Future<void> _fetchRegisteredProfessionals() async {
+    setState(() => _loadingProfessionals = true);
+    try {
+      // First debug all user roles in the database
+      await _professionalService.debugUserRoles();
+
+      final professionals =
+          await _professionalService.fetchMentalHealthProfessionals();
+
+      // Debug what we got
+      print('Professionals found: ${professionals.length}');
+      for (var prof in professionals) {
+        print('Professional: ${prof.username}, ID: ${prof.id}');
+      }
+
+      setState(() {
+        _professionals = professionals;
+      });
+    } catch (e) {
+      debugPrint('Error loading professionals: $e');
+    } finally {
+      setState(() => _loadingProfessionals = false);
+    }
   }
 
   Future<void> _mergeFavsIntoCurrentList() async {
     final favIds = await _placesService.loadFavoriteIds();
     setState(() {
-      _clinics =
-          _clinics.map((p) => p.copyWith(isFavorite: favIds.contains(p.placeId))).toList();
+      _clinics = _clinics
+          .map((p) => p.copyWith(isFavorite: favIds.contains(p.placeId)))
+          .toList();
     });
   }
 
@@ -59,7 +101,8 @@ class _MapScreenState extends State<MapScreen> {
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: const Text('Location is Off'),
-        content: const Text('Please turn on location services to see nearby clinics.'),
+        content: const Text(
+            'Please turn on location services to see nearby clinics.'),
         actions: [
           TextButton(
             onPressed: () async {
@@ -268,14 +311,16 @@ class _MapScreenState extends State<MapScreen> {
   void _showClinicActions(Place clinic) async {
     clinic = await _ensureDetails(clinic);
 
-    final distKm = (_distanceFromUser(clinic.location) / 1000).toStringAsFixed(1);
+    final distKm =
+        (_distanceFromUser(clinic.location) / 1000).toStringAsFixed(1);
     final fav = clinic.isFavorite;
     final openStr = clinic.openNow == null
         ? ''
         : (clinic.openNow! ? 'Open now' : 'Closed now');
-    final todayStr = (clinic.weekdayText != null && clinic.weekdayText!.isNotEmpty)
-        ? _todayHours(clinic.weekdayText!)
-        : 'Hours not available';
+    final todayStr =
+        (clinic.weekdayText != null && clinic.weekdayText!.isNotEmpty)
+            ? _todayHours(clinic.weekdayText!)
+            : 'Hours not available';
 
     showModalBottomSheet(
       context: context,
@@ -309,8 +354,8 @@ class _MapScreenState extends State<MapScreen> {
                           ),
                           onPressed: () async {
                             await _toggleFavorite(clinic);
-                            final idx =
-                                _clinics.indexWhere((p) => p.placeId == clinic.placeId);
+                            final idx = _clinics
+                                .indexWhere((p) => p.placeId == clinic.placeId);
                             if (idx != -1) {
                               clinic = _clinics[idx];
                               setModalState(() {});
@@ -324,7 +369,8 @@ class _MapScreenState extends State<MapScreen> {
                     const SizedBox(height: 6),
                     Text(
                       '⭐ ${clinic.rating.toStringAsFixed(1)}   •   $distKm km away',
-                      style: const TextStyle(fontSize: 13, color: Colors.black54),
+                      style:
+                          const TextStyle(fontSize: 13, color: Colors.black54),
                     ),
                     if (openStr.isNotEmpty) ...[
                       const SizedBox(height: 6),
@@ -332,7 +378,9 @@ class _MapScreenState extends State<MapScreen> {
                         openStr,
                         style: TextStyle(
                           fontSize: 13,
-                          color: clinic.openNow == true ? Colors.green : Colors.red,
+                          color: clinic.openNow == true
+                              ? Colors.green
+                              : Colors.red,
                         ),
                       ),
                     ],
@@ -357,7 +405,8 @@ class _MapScreenState extends State<MapScreen> {
                                   child: Align(
                                       alignment: Alignment.centerLeft,
                                       child: Text(line,
-                                          style: const TextStyle(fontSize: 13))),
+                                          style:
+                                              const TextStyle(fontSize: 13))),
                                 ))
                             .toList(),
                       ),
@@ -373,7 +422,8 @@ class _MapScreenState extends State<MapScreen> {
                               backgroundColor: AppColors.bgdarkgreen,
                               foregroundColor: Colors.white,
                             ),
-                            onPressed: () => _openExternalDirections(clinic.location),
+                            onPressed: () =>
+                                _openExternalDirections(clinic.location),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -442,7 +492,8 @@ class _MapScreenState extends State<MapScreen> {
           itemBuilder: (ctx2, i) {
             final p = favPlaces[i];
             final order = i + 1;
-            final distKm = (_distanceFromUser(p.location) / 1000).toStringAsFixed(1);
+            final distKm =
+                (_distanceFromUser(p.location) / 1000).toStringAsFixed(1);
 
             return ListTile(
               leading: CircleAvatar(
@@ -495,6 +546,402 @@ class _MapScreenState extends State<MapScreen> {
     } else {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Cannot place call')));
+    }
+  }
+
+  void _showProfessionalDetails(ProfessionalUser professional) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (professional.profilePicUrl != null)
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundImage:
+                          NetworkImage(professional.profilePicUrl!),
+                    )
+                  else
+                    const CircleAvatar(
+                      radius: 30,
+                      backgroundColor: AppColors.bgdarkgreen,
+                      child: Icon(Icons.person, color: Colors.white, size: 30),
+                    ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          professional.username,
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          professional.specialization,
+                          style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.backgroundGradientEnd),
+                        ),
+                        if (professional.rating != null)
+                          Row(
+                            children: [
+                              const Icon(Icons.star,
+                                  color: Colors.amber, size: 18),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${professional.rating!.toStringAsFixed(1)} (${professional.reviewCount ?? 0})',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              _infoRow(Icons.person, 'Age: ${professional.age}'),
+              _infoRow(Icons.wc, 'Gender: ${professional.gender}'),
+              _infoRow(Icons.phone, professional.phone),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.call),
+                      label: const Text('Contact'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.bgdarkgreen,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () => _callNumber(professional.phone),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.calendar_month),
+                      label: const Text('Book Appointment'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.backgroundGradientEnd,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () {
+                        // Close the details sheet
+                        Navigator.pop(ctx);
+                        // Show appointment booking dialog
+                        _showAppointmentBookingDialog(professional);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _infoRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.backgroundGradientEnd),
+          const SizedBox(width: 8),
+          Text(text),
+        ],
+      ),
+    );
+  }
+
+  void _showAppointmentBookingDialog(ProfessionalUser professional) {
+    // Variables for appointment details
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
+    String selectedTime = '09:00 AM';
+    bool consentToShareSummary = false;
+
+    // Available time slots
+    final List<String> timeSlots = [
+      '09:00 AM',
+      '10:00 AM',
+      '11:00 AM',
+      '12:00 PM',
+      '01:00 PM',
+      '02:00 PM',
+      '03:00 PM',
+      '04:00 PM',
+      '05:00 PM'
+    ];
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Book Appointment with ${professional.username}'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Select Date:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: ListTile(
+                        onTap: () async {
+                          final DateTime? picked = await showDatePicker(
+                            context: context,
+                            initialDate: selectedDate,
+                            firstDate: DateTime.now(),
+                            lastDate:
+                                DateTime.now().add(const Duration(days: 30)),
+                            builder: (context, child) {
+                              return Theme(
+                                data: ThemeData.light().copyWith(
+                                  colorScheme: const ColorScheme.light(
+                                    primary: AppColors.backgroundGradientEnd,
+                                  ),
+                                ),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (picked != null && picked != selectedDate) {
+                            setState(() {
+                              selectedDate = picked;
+                            });
+                          }
+                        },
+                        title: Text(
+                          '${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        trailing: const Icon(Icons.calendar_today),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Select Time:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: selectedTime,
+                          items: timeSlots.map((String time) {
+                            return DropdownMenuItem<String>(
+                              value: time,
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(time),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                selectedTime = newValue;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    // Consent checkbox for sharing chat summary
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        'I consent to share my chat summary with the psychologist',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      value: consentToShareSummary,
+                      activeColor: AppColors.bgdarkgreen,
+                      onChanged: (bool? value) {
+                        if (value != null) {
+                          setState(() {
+                            consentToShareSummary = value;
+                          });
+
+                          // If user checked the consent box, show info dialog
+                          if (value) {
+                            Future.delayed(const Duration(milliseconds: 300),
+                                () {
+                              _showChatSummaryConsentInfo();
+                            });
+                          }
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                TextButton(
+                  child: const Text(
+                    'Book',
+                    style: TextStyle(color: AppColors.bgdarkgreen),
+                  ),
+                  onPressed: () {
+                    _bookAppointment(
+                      professional: professional,
+                      date: selectedDate,
+                      time: selectedTime,
+                      shareSummary: consentToShareSummary,
+                    );
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showChatSummaryConsentInfo() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.info_outline, color: AppColors.backgroundGradientEnd),
+              SizedBox(width: 8),
+              Text('Chat Summary Sharing'),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Your chat summary will help the psychologist understand your concerns before the appointment.',
+                style: TextStyle(fontSize: 15),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'This includes:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text('• Recent chat interactions with the AI assistant'),
+              Text('• Key concerns and topics discussed'),
+              Text('• Mood analysis data if available'),
+              SizedBox(height: 12),
+              Text(
+                'Note: You can withdraw your consent at any time by contacting us.',
+                style: TextStyle(fontStyle: FontStyle.italic, fontSize: 13),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              child: const Text('OK, I understand'),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _bookAppointment({
+    required ProfessionalUser professional,
+    required DateTime date,
+    required String time,
+    required bool shareSummary,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to book appointments')),
+      );
+      return;
+    }
+
+    try {
+      // Format date for Firestore
+      final formattedDate = '${date.day}/${date.month}/${date.year}';
+
+      // Save appointment in Firestore
+      final appointmentRef =
+          await FirebaseFirestore.instance.collection('appointments').add({
+        'patientId': user.uid,
+        'professionalId': professional.id,
+        'professionalName': professional.username,
+        'date': formattedDate,
+        'time': time,
+        'status': 'pending',
+        'shareSummary': shareSummary,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Update the professional's patient list
+      await _professionalService.addPatientToProfessional(
+          professional.id, user.uid);
+
+      print('Appointment booked with ID: ${appointmentRef.id}');
+      print('Updated patient list for professional ${professional.id}');
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Appointment with ${professional.username} booked successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error booking appointment: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -566,55 +1013,188 @@ class _MapScreenState extends State<MapScreen> {
                     ),
             ),
 
-            // Cards (no order, no timings, just rating & distance)
+            // Toggle tabs - Clinics / Registered Professionals
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() => _showProfessionalsTab = false);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: !_showProfessionalsTab
+                                  ? AppColors.backgroundGradientEnd
+                                  : Colors.transparent,
+                              width: 3,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'Nearby Clinics',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: !_showProfessionalsTab
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: !_showProfessionalsTab
+                                ? AppColors.backgroundGradientEnd
+                                : Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() => _showProfessionalsTab = true);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: _showProfessionalsTab
+                                  ? AppColors.bgdarkgreen
+                                  : Colors.transparent,
+                              width: 3,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'Registered Psychologists',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: _showProfessionalsTab
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: _showProfessionalsTab
+                                ? AppColors.bgdarkgreen
+                                : Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Either Clinics or Professionals list based on toggle
             Expanded(
               flex: 1,
-              child: _loadingClinics
-                  ? const Center(child: CircularProgressIndicator())
-                  : _clinics.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No clinics found nearby',
-                            style: TextStyle(color: Colors.white70),
-                          ),
-                        )
-                      : ListView.builder(
-                          itemCount: _clinics.length,
-                          itemBuilder: (context, i) {
-                            final clinic = _clinics[i];
-                            final distKm =
-                                _distanceFromUser(clinic.location) / 1000.0;
-
-                            return Card(
-                              margin: const EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 16),
-                              child: ListTile(
-                                title: Text(clinic.name),
-                                subtitle: Text(
-                                  '${clinic.address}\n'
-                                  '${distKm.toStringAsFixed(1)} km • ⭐ ${clinic.rating.toStringAsFixed(1)}',
-                                ),
-                                isThreeLine: true,
-                                trailing: IconButton(
-                                  icon: Icon(
-                                    clinic.isFavorite
-                                        ? Icons.favorite
-                                        : Icons.favorite_border,
-                                    color: clinic.isFavorite
-                                        ? Colors.red
-                                        : Colors.grey,
-                                  ),
-                                  onPressed: () => _toggleFavorite(clinic),
-                                ),
-                                onTap: () => _goToClinic(clinic),
-                              ),
-                            );
-                          },
-                        ),
+              child: _showProfessionalsTab
+                  ? _buildProfessionalsList()
+                  : _buildClinicsList(),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildClinicsList() {
+    return _loadingClinics
+        ? const Center(child: CircularProgressIndicator())
+        : _clinics.isEmpty
+            ? const Center(
+                child: Text(
+                  'No clinics found nearby',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              )
+            : ListView.builder(
+                itemCount: _clinics.length,
+                itemBuilder: (context, i) {
+                  final clinic = _clinics[i];
+                  final distKm = _distanceFromUser(clinic.location) / 1000.0;
+
+                  return Card(
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    child: ListTile(
+                      title: Text(clinic.name),
+                      subtitle: Text(
+                        '${clinic.address}\n'
+                        '${distKm.toStringAsFixed(1)} km • ⭐ ${clinic.rating.toStringAsFixed(1)}',
+                      ),
+                      isThreeLine: true,
+                      trailing: IconButton(
+                        icon: Icon(
+                          clinic.isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: clinic.isFavorite ? Colors.red : Colors.grey,
+                        ),
+                        onPressed: () => _toggleFavorite(clinic),
+                      ),
+                      onTap: () => _goToClinic(clinic),
+                    ),
+                  );
+                },
+              );
+  }
+
+  Widget _buildProfessionalsList() {
+    return _loadingProfessionals
+        ? const Center(child: CircularProgressIndicator())
+        : _professionals.isEmpty
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.person_off,
+                    color: Colors.white70,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No registered psychologists found',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Refresh'),
+                    onPressed: _fetchRegisteredProfessionals,
+                  ),
+                ],
+              )
+            : ListView.builder(
+                itemCount: _professionals.length,
+                itemBuilder: (context, i) {
+                  final professional = _professionals[i];
+                  return Card(
+                    margin:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    child: ListTile(
+                      leading: professional.profilePicUrl != null
+                          ? CircleAvatar(
+                              backgroundImage:
+                                  NetworkImage(professional.profilePicUrl!),
+                            )
+                          : const CircleAvatar(
+                              backgroundColor: AppColors.bgdarkgreen,
+                              child: Icon(Icons.person, color: Colors.white),
+                            ),
+                      title: Text(professional.username),
+                      subtitle: Text(
+                        '${professional.specialization}\n'
+                        '${professional.gender}, ${professional.age} years old',
+                      ),
+                      isThreeLine: true,
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () => _showProfessionalDetails(professional),
+                    ),
+                  );
+                },
+              );
   }
 }

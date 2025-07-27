@@ -110,7 +110,7 @@ class _MainMenuState extends State<MainMenu>
         case 'Local Clinics':
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) =>  MapScreen()),
+            MaterialPageRoute(builder: (context) =>  const MapScreen()),
           );
           break;
         default:
