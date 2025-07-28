@@ -87,7 +87,9 @@ class _SignUpPageState extends State<SignUpPage>
               onPrimary: Colors.white,
               surface: Color.fromARGB(255, 55, 13, 104),
               onSurface: Colors.white,
-            ), dialogTheme: const DialogThemeData(backgroundColor: Color.fromARGB(255, 30, 10, 60)),
+            ),
+            dialogTheme: const DialogThemeData(
+                backgroundColor: Color.fromARGB(255, 30, 10, 60)),
           ),
           child: child!,
         );

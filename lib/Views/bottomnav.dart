@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 import 'package:therapylink/Views/mainMenu.dart';
-import 'package:therapylink/Views/moodanalysis.dart';
 import 'package:therapylink/Views/profilepage.dart';
-import 'package:therapylink/Views/settings.dart';
 import 'package:therapylink/bloc/chat_bloc.dart';
 import 'package:therapylink/utils/colors.dart';
 import 'home_page.dart'; // Import the ChatBot

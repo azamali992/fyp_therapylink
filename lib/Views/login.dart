@@ -8,7 +8,6 @@ import '../utils/constants.dart';
 import 'package:therapylink/auth.dart';
 import '../utils/user_role.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_signin_button/flutter_signin_button.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../firebase_options.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -623,54 +622,54 @@ class _LoginPageState extends State<LoginPage>
                               ),
                             ),
 
-                      SizedBox(height: screenHeight * 0.03),
+                      // SizedBox(height: screenHeight * 0.03),
 
-                      // Google sign-in buttons
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius:
-                              BorderRadius.circular(AppConstants.borderRadius),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: SignInButton(
-                          Buttons.Google,
-                          text: "Sign In with Google",
-                          onPressed: () async {
-                            await _signInWithGoogle(isSignUp: false);
-                          },
-                        ),
-                      ),
+                      // // Google sign-in buttons
+                      // Container(
+                      //   decoration: BoxDecoration(
+                      //     borderRadius:
+                      //         BorderRadius.circular(AppConstants.borderRadius),
+                      //     boxShadow: [
+                      //       BoxShadow(
+                      //         color: Colors.black.withOpacity(0.2),
+                      //         blurRadius: 8,
+                      //         offset: const Offset(0, 4),
+                      //       ),
+                      //     ],
+                      //   ),
+                      //   child: SignInButton(
+                      //     Buttons.Google,
+                      //     text: "Sign In with Google",
+                      //     onPressed: () async {
+                      //       await _signInWithGoogle(isSignUp: false);
+                      //     },
+                      //   ),
+                      // ),
 
-                      SizedBox(height: screenHeight * 0.015),
+                      // SizedBox(height: screenHeight * 0.015),
 
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius:
-                              BorderRadius.circular(AppConstants.borderRadius),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: SignInButton(
-                          Buttons.Google,
-                          text: "Sign Up with Google",
-                          onPressed: () async {
-                            await _signInWithGoogle(isSignUp: true);
-                          },
-                        ),
-                      ),
+                      // Container(
+                      //   decoration: BoxDecoration(
+                      //     borderRadius:
+                      //         BorderRadius.circular(AppConstants.borderRadius),
+                      //     boxShadow: [
+                      //       BoxShadow(
+                      //         color: Colors.black.withOpacity(0.2),
+                      //         blurRadius: 8,
+                      //         offset: const Offset(0, 4),
+                      //       ),
+                      //     ],
+                      //   ),
+                      //   child: SignInButton(
+                      //     Buttons.Google,
+                      //     text: "Sign Up with Google",
+                      //     onPressed: () async {
+                      //       await _signInWithGoogle(isSignUp: true);
+                      //     },
+                      //   ),
+                      // ),
 
-                      SizedBox(height: screenHeight * 0.02),
+                      // SizedBox(height: screenHeight * 0.02),
 
                       // Sign up link
                       TextButton(

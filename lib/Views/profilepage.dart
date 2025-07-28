@@ -9,7 +9,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:therapylink/Views/stress_relieving.dart';
 import 'package:therapylink/Views/profile_info.dart';
 import 'package:therapylink/Views/moodanalysis.dart';
-import 'package:therapylink/Views/settings.dart'; // Import your settings page
+import 'package:therapylink/Views/settings.dart';
+import 'package:therapylink/Views/about_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
@@ -717,13 +718,14 @@ class _ProfilePageState extends State<ProfilePage>
                                 ),
                                 _buildActionButton(
                                   'Support',
-                                  Icons.support_agent,
+                                  Icons.settings,
                                   () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content:
-                                            Text('Support chat coming soon'),
-                                        duration: Duration(seconds: 2),
+                                    // Navigate to the existing settings page
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const AboutPage(), // Use your existing SettingsPage
                                       ),
                                     );
                                   },

@@ -324,143 +324,327 @@ class _MapScreenState extends State<MapScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          child: StatefulBuilder(
-            builder: (context, setModalState) {
-              return SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            clinic.name,
-                            style: const TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                Color(0xFFF8F9FA),
+              ],
+            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: StatefulBuilder(
+              builder: (context, setModalState) {
+                return SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Handle bar
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(2),
                           ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            fav ? Icons.favorite : Icons.favorite_border,
-                            color: fav ? Colors.red : Colors.grey,
-                          ),
-                          onPressed: () async {
-                            await _toggleFavorite(clinic);
-                            final idx = _clinics
-                                .indexWhere((p) => p.placeId == clinic.placeId);
-                            if (idx != -1) {
-                              clinic = _clinics[idx];
-                              setModalState(() {});
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(clinic.address, style: const TextStyle(fontSize: 14)),
-                    const SizedBox(height: 6),
-                    Text(
-                      '⭐ ${clinic.rating.toStringAsFixed(1)}   •   $distKm km away',
-                      style:
-                          const TextStyle(fontSize: 13, color: Colors.black54),
-                    ),
-                    if (openStr.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        openStr,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: clinic.openNow == true
-                              ? Colors.green
-                              : Colors.red,
                         ),
                       ),
-                    ],
-                    const SizedBox(height: 6),
-                    Text(
-                      todayStr,
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w500),
-                    ),
-                    if (clinic.weekdayText != null &&
-                        clinic.weekdayText!.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      ExpansionTile(
-                        title: const Text(
-                          'Full Schedule',
-                          style: TextStyle(fontSize: 14),
-                        ),
-                        children: clinic.weekdayText!
-                            .map((line) => Padding(
+                      const SizedBox(height: 20),
+                      
+                      // Header with name and favorite
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  clinic.name,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 4),
-                                  child: Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: Text(line,
-                                          style:
-                                              const TextStyle(fontSize: 13))),
-                                ))
-                            .toList(),
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.bgdarkgreen.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    'Healthcare Facility',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.bgdarkgreen,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: fav ? Colors.red.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                fav ? Icons.favorite : Icons.favorite_border,
+                                color: fav ? Colors.red : Colors.grey,
+                                size: 24,
+                              ),
+                              onPressed: () async {
+                                await _toggleFavorite(clinic);
+                                final idx = _clinics
+                                    .indexWhere((p) => p.placeId == clinic.placeId);
+                                if (idx != -1) {
+                                  clinic = _clinics[idx];
+                                  setModalState(() {});
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      
+                      // Info cards
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            _buildInfoRow(Icons.location_on, clinic.address, Colors.red),
+                            const Divider(height: 20),
+                            _buildInfoRow(
+                              Icons.star,
+                              '${clinic.rating.toStringAsFixed(1)} rating',
+                              Colors.amber,
+                            ),
+                            const Divider(height: 20),
+                            _buildInfoRow(
+                              Icons.directions_car,
+                              '$distKm km away',
+                              AppColors.bgdarkgreen,
+                            ),
+                            if (openStr.isNotEmpty) ...[
+                              const Divider(height: 20),
+                              _buildInfoRow(
+                                clinic.openNow == true ? Icons.access_time : Icons.access_time_filled,
+                                openStr,
+                                clinic.openNow == true ? Colors.green : Colors.red,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Hours section
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: const [
+                                Icon(
+                                  Icons.schedule,
+                                  color: AppColors.bgdarkgreen,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Hours Today',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              todayStr,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Colors.black54,
+                              ),
+                            ),
+                            if (clinic.weekdayText != null &&
+                                clinic.weekdayText!.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              ExpansionTile(
+                                tilePadding: EdgeInsets.zero,
+                                title: const Text(
+                                  'View Full Schedule',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.bgdarkgreen,
+                                  ),
+                                ),
+                                children: clinic.weekdayText!
+                                    .map((line) => Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 0,
+                                            vertical: 4,
+                                          ),
+                                          child: Align(
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(
+                                              line,
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.black54,
+                                              ),
+                                            ),
+                                          ),
+                                        ))
+                                    .toList(),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // Action buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionButton(
+                              icon: Icons.directions,
+                              label: 'Directions',
+                              color: AppColors.bgdarkgreen,
+                              onPressed: () => _openExternalDirections(clinic.location),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildActionButton(
+                              icon: Icons.map,
+                              label: 'Open Maps',
+                              color: AppColors.backgroundGradientEnd,
+                              onPressed: () => _openExternalMaps(clinic.location, clinic.name),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Call button
+                      SizedBox(
+                        width: double.infinity,
+                        child: _buildActionButton(
+                          icon: Icons.call,
+                          label: clinic.phoneNumber != null ? 'Call Now' : 'Phone Not Available',
+                          color: clinic.phoneNumber != null ? AppColors.facebookBlue : Colors.grey,
+                          onPressed: clinic.phoneNumber == null
+                              ? null
+                              : () => _callNumber(clinic.phoneNumber!),
+                        ),
                       ),
                     ],
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.directions),
-                            label: const Text('Directions'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.bgdarkgreen,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: () =>
-                                _openExternalDirections(clinic.location),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.map),
-                            label: const Text('Open in Maps'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.backgroundGradientEnd,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: () =>
-                                _openExternalMaps(clinic.location, clinic.name),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // CALL BUTTON
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.call),
-                      label: const Text('Call'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.facebookBlue,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: clinic.phoneNumber == null
-                          ? null
-                          : () => _callNumber(clinic.phoneNumber!),
-                    ),
-                  ],
-                ),
-              );
-            },
+                  ),
+                );
+              },
+            ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text, Color iconColor) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: iconColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: iconColor,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback? onPressed,
+  }) {
+    return ElevatedButton.icon(
+      icon: Icon(icon, size: 18),
+      label: Text(label),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        elevation: 0,
+        shadowColor: Colors.transparent,
+      ),
+      onPressed: onPressed,
     );
   }
 
@@ -469,7 +653,14 @@ class _MapScreenState extends State<MapScreen> {
     final favPlaces = await _placesService.loadFavoritePlaces();
     if (favPlaces.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No favourites yet.')),
+        SnackBar(
+          content: const Text('No favourites yet.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       );
       return;
     }
@@ -481,40 +672,191 @@ class _MapScreenState extends State<MapScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (_) {
-        return ListView.builder(
-          shrinkWrap: true,
-          itemCount: favPlaces.length,
-          itemBuilder: (ctx2, i) {
-            final p = favPlaces[i];
-            final order = i + 1;
-            final distKm =
-                (_distanceFromUser(p.location) / 1000).toStringAsFixed(1);
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                Color(0xFFF8F9FA),
+              ],
+            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle and header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+                child: Column(
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.favorite,
+                            color: Colors.red,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        const Text(
+                          'Your Favourite Clinics',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Favorites list
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  itemCount: favPlaces.length,
+                  itemBuilder: (ctx2, i) {
+                    final p = favPlaces[i];
+                    final order = i + 1;
+                    final distKm =
+                        (_distanceFromUser(p.location) / 1000).toStringAsFixed(1);
 
-            return ListTile(
-              leading: CircleAvatar(
-                backgroundColor: AppColors.backgroundGradientEnd,
-                child: Text(order.toString(),
-                    style: const TextStyle(color: Colors.white)),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(16),
+                        leading: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                AppColors.backgroundGradientStart,
+                                AppColors.backgroundGradientEnd,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            order.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          p.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Text(
+                              p.address,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.directions_car,
+                                  size: 16,
+                                  color: AppColors.bgdarkgreen,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '$distKm km',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.bgdarkgreen,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                const Icon(
+                                  Icons.star,
+                                  size: 16,
+                                  color: Colors.amber,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  p.rating.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        trailing: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgdarkgreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: AppColors.bgdarkgreen,
+                          ),
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx2);
+                          _goToClinic(p);
+                        },
+                      ),
+                    );
+                  },
+                ),
               ),
-              title: Text(p.name),
-              subtitle: Text(
-                '${p.address}\n$distKm km • ⭐ ${p.rating.toStringAsFixed(1)}',
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-              isThreeLine: true,
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () {
-                Navigator.pop(ctx2);
-                _goToClinic(p);
-              },
-            );
-          },
+            ],
+          ),
         );
       },
     );
@@ -552,121 +894,215 @@ class _MapScreenState extends State<MapScreen> {
   void _showProfessionalDetails(ProfessionalUser professional) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  if (professional.profilePicUrl != null)
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundImage:
-                          NetworkImage(professional.profilePicUrl!),
-                    )
-                  else
-                    const CircleAvatar(
-                      radius: 30,
-                      backgroundColor: AppColors.bgdarkgreen,
-                      child: Icon(Icons.person, color: Colors.white, size: 30),
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white,
+                Color(0xFFF8F9FA),
+              ],
+            ),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          professional.username,
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          professional.specialization,
-                          style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.backgroundGradientEnd),
-                        ),
-                        if (professional.rating != null)
-                          Row(
-                            children: [
-                              const Icon(Icons.star,
-                                  color: Colors.amber, size: 18),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${professional.rating!.toStringAsFixed(1)} (${professional.reviewCount ?? 0})',
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                            ],
-                          ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                
+                // Professional header
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        AppColors.bgdarkgreen,
+                        AppColors.backgroundGradientEnd,
                       ],
                     ),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                ],
-              ),
-              const Divider(height: 24),
-              _infoRow(Icons.person, 'Age: ${professional.age}'),
-              _infoRow(Icons.wc, 'Gender: ${professional.gender}'),
-              _infoRow(Icons.phone, professional.phone),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.call),
-                      label: const Text('Contact'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.bgdarkgreen,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        child: professional.profilePicUrl != null
+                            ? CircleAvatar(
+                                radius: 30,
+                                backgroundImage:
+                                    NetworkImage(professional.profilePicUrl!),
+                              )
+                            : const CircleAvatar(
+                                radius: 30,
+                                backgroundColor: AppColors.bgdarkgreen,
+                                child: Icon(Icons.person, color: Colors.white, size: 30),
+                              ),
                       ),
-                      onPressed: () => _callNumber(professional.phone),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.calendar_month),
-                      label: const Text('Book Appointment'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.backgroundGradientEnd,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              professional.username,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                professional.specialization,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            if (professional.rating != null) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(Icons.star, color: Colors.amber, size: 16),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${professional.rating!.toStringAsFixed(1)} (${professional.reviewCount ?? 0} reviews)',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
-                      onPressed: () {
-                        // Close the details sheet
-                        Navigator.pop(ctx);
-                        // Show appointment booking dialog
-                        _showAppointmentBookingDialog(professional);
-                      },
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ],
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Info section
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      _buildModernInfoRow(Icons.cake, 'Age: ${professional.age}'),
+                      const Divider(height: 20),
+                      _buildModernInfoRow(Icons.wc, 'Gender: ${professional.gender}'),
+                      const Divider(height: 20),
+                      _buildModernInfoRow(Icons.phone, professional.phone),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionButton(
+                        icon: Icons.call,
+                        label: 'Contact',
+                        color: AppColors.bgdarkgreen,
+                        onPressed: () => _callNumber(professional.phone),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildActionButton(
+                        icon: Icons.calendar_month,
+                        label: 'Book Appointment',
+                        color: AppColors.backgroundGradientEnd,
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _showAppointmentBookingDialog(professional);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _infoRow(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: AppColors.backgroundGradientEnd),
-          const SizedBox(width: 8),
-          Text(text),
-        ],
-      ),
+  Widget _buildModernInfoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.bgdarkgreen.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            size: 18,
+            color: AppColors.bgdarkgreen,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1015,75 +1451,118 @@ class _MapScreenState extends State<MapScreen> {
 
             // Toggle tabs - Clinics / Registered Professionals
             Container(
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() => _showProfessionalsTab = false);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: !_showProfessionalsTab
-                                  ? AppColors.backgroundGradientEnd
-                                  : Colors.transparent,
-                              width: 3,
-                            ),
-                          ),
-                        ),
-                        child: Text(
-                          'Nearby Clinics',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontWeight: !_showProfessionalsTab
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: !_showProfessionalsTab
-                                ? AppColors.backgroundGradientEnd
-                                : Colors.grey,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() => _showProfessionalsTab = true);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: _showProfessionalsTab
-                                  ? AppColors.bgdarkgreen
-                                  : Colors.transparent,
-                              width: 3,
-                            ),
-                          ),
-                        ),
-                        child: Text(
-                          'Registered Psychologists',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontWeight: _showProfessionalsTab
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: _showProfessionalsTab
-                                ? AppColors.bgdarkgreen
-                                : Colors.grey,
-                          ),
-                        ),
-                      ),
-                    ),
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() => _showProfessionalsTab = false);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            gradient: !_showProfessionalsTab
+                                ? const LinearGradient(
+                                    colors: [
+                                      AppColors.backgroundGradientStart,
+                                      AppColors.backgroundGradientEnd,
+                                    ],
+                                  )
+                                : null,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                size: 18,
+                                color: !_showProfessionalsTab
+                                    ? Colors.white
+                                    : Colors.grey[600],
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Nearby Clinics',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontWeight: !_showProfessionalsTab
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: !_showProfessionalsTab
+                                      ? Colors.white
+                                      : Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() => _showProfessionalsTab = true);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            gradient: _showProfessionalsTab
+                                ? const LinearGradient(
+                                    colors: [
+                                      AppColors.bgdarkgreen,
+                                      AppColors.backgroundGradientEnd,
+                                    ],
+                                  )
+                                : null,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.psychology,
+                                size: 18,
+                                color: _showProfessionalsTab
+                                    ? Colors.white
+                                    : Colors.grey[600],
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Psychologists',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontWeight: _showProfessionalsTab
+                                      ? FontWeight.bold
+                                      : FontWeight.w500,
+                                  color: _showProfessionalsTab
+                                      ? Colors.white
+                                      : Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -1102,99 +1581,336 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _buildClinicsList() {
     return _loadingClinics
-        ? const Center(child: CircularProgressIndicator())
+        ? const Center(
+            child: CircularProgressIndicator(
+              color: Colors.white,
+            ),
+          )
         : _clinics.isEmpty
             ? const Center(
-                child: Text(
-                  'No clinics found nearby',
-                  style: TextStyle(color: Colors.white70),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.location_off,
+                      color: Colors.white70,
+                      size: 48,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'No clinics found nearby',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
                 ),
               )
-            : ListView.builder(
-                itemCount: _clinics.length,
-                itemBuilder: (context, i) {
-                  final clinic = _clinics[i];
-                  final distKm = _distanceFromUser(clinic.location) / 1000.0;
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: ListView.builder(
+                  itemCount: _clinics.length,
+                  itemBuilder: (context, i) {
+                    final clinic = _clinics[i];
+                    final distKm = _distanceFromUser(clinic.location) / 1000.0;
 
-                  return Card(
-                    margin:
-                        const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                    child: ListTile(
-                      title: Text(clinic.name),
-                      subtitle: Text(
-                        '${clinic.address}\n'
-                        '${distKm.toStringAsFixed(1)} km • ⭐ ${clinic.rating.toStringAsFixed(1)}',
-                      ),
-                      isThreeLine: true,
-                      trailing: IconButton(
-                        icon: Icon(
-                          clinic.isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: clinic.isFavorite ? Colors.red : Colors.grey,
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white,
+                            Color(0xFFF8F9FA),
+                          ],
                         ),
-                        onPressed: () => _toggleFavorite(clinic),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      onTap: () => _goToClinic(clinic),
-                    ),
-                  );
-                },
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(16),
+                        leading: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgdarkgreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.local_hospital,
+                            color: AppColors.bgdarkgreen,
+                            size: 24,
+                          ),
+                        ),
+                        title: Text(
+                          clinic.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Text(
+                              clinic.address,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.black54,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.directions_car,
+                                  size: 14,
+                                  color: AppColors.bgdarkgreen,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${distKm.toStringAsFixed(1)} km',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.bgdarkgreen,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                const Icon(
+                                  Icons.star,
+                                  size: 14,
+                                  color: Colors.amber,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  clinic.rating.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        trailing: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: clinic.isFavorite
+                                ? Colors.red.withOpacity(0.1)
+                                : Colors.grey.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            clinic.isFavorite
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: clinic.isFavorite ? Colors.red : Colors.grey,
+                            size: 20,
+                          ),
+                        ),
+                        onTap: () => _goToClinic(clinic),
+                      ),
+                    );
+                  },
+                ),
               );
   }
 
   Widget _buildProfessionalsList() {
     return _loadingProfessionals
-        ? const Center(child: CircularProgressIndicator())
+        ? const Center(
+            child: CircularProgressIndicator(
+              color: Colors.white,
+            ),
+          )
         : _professionals.isEmpty
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.person_off,
-                    color: Colors.white70,
-                    size: 48,
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.person_off,
+                      color: Colors.white70,
+                      size: 48,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   const Text(
                     'No registered psychologists found',
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  TextButton.icon(
+                  ElevatedButton.icon(
                     icon: const Icon(Icons.refresh),
                     label: const Text('Refresh'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.bgdarkgreen,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                     onPressed: _fetchRegisteredProfessionals,
                   ),
                 ],
               )
-            : ListView.builder(
-                itemCount: _professionals.length,
-                itemBuilder: (context, i) {
-                  final professional = _professionals[i];
-                  return Card(
-                    margin:
-                        const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                    child: ListTile(
-                      leading: professional.profilePicUrl != null
-                          ? CircleAvatar(
-                              backgroundImage:
-                                  NetworkImage(professional.profilePicUrl!),
-                            )
-                          : const CircleAvatar(
-                              backgroundColor: AppColors.bgdarkgreen,
-                              child: Icon(Icons.person, color: Colors.white),
-                            ),
-                      title: Text(professional.username),
-                      subtitle: Text(
-                        '${professional.specialization}\n'
-                        '${professional.gender}, ${professional.age} years old',
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: ListView.builder(
+                  itemCount: _professionals.length,
+                  itemBuilder: (context, i) {
+                    final professional = _professionals[i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.white,
+                            Color(0xFFF8F9FA),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      isThreeLine: true,
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () => _showProfessionalDetails(professional),
-                    ),
-                  );
-                },
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(16),
+                        leading: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                AppColors.bgdarkgreen,
+                                AppColors.backgroundGradientEnd,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          child: professional.profilePicUrl != null
+                              ? CircleAvatar(
+                                  radius: 24,
+                                  backgroundImage:
+                                      NetworkImage(professional.profilePicUrl!),
+                                )
+                              : const CircleAvatar(
+                                  radius: 24,
+                                  backgroundColor: Colors.white,
+                                  child: Icon(
+                                    Icons.person,
+                                    color: AppColors.bgdarkgreen,
+                                    size: 24,
+                                  ),
+                                ),
+                        ),
+                        title: Text(
+                          professional.username,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.bgdarkgreen.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                professional.specialization,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.bgdarkgreen,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.wc,
+                                  size: 14,
+                                  color: Colors.grey[600],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  professional.gender,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Icon(
+                                  Icons.cake,
+                                  size: 14,
+                                  color: Colors.grey[600],
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${professional.age} years',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        trailing: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgdarkgreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_ios,
+                            size: 16,
+                            color: AppColors.bgdarkgreen,
+                          ),
+                        ),
+                        onTap: () => _showProfessionalDetails(professional),
+                      ),
+                    );
+                  },
+                ),
               );
   }
 }

@@ -40,7 +40,8 @@ class _VoiceChatPageState extends State<VoiceChatPage>
     _lottieController = AnimationController(vsync: this);
     _riveController = SimpleAnimation('idle');
 
-    _aiResponse = "Hello! How can I help you Today ?"; // ✅ Custom opening message
+    _aiResponse =
+        "Hello! How can I help you Today ?"; // ✅ Custom opening message
 
     _initTTS();
     _initGoogleSpeech();
@@ -210,106 +211,342 @@ class _VoiceChatPageState extends State<VoiceChatPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Psychologist", style: TextStyle(color: Colors.white)),
-        centerTitle: true,
-        backgroundColor: AppColors.backgroundGradientStart,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
       body: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
               AppColors.backgroundGradientStart,
-              AppColors.backgroundGradientEnd
+              AppColors.backgroundGradientEnd,
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
-        child: BlocConsumer<ChatBloc, ChatState>(
-          listener: (context, state) {
-            if (state is ChatSuccessState && state.messages.isNotEmpty) {
-              final lastMessage = state.messages.last;
-
-              if (lastMessage.role == "model") {
-                if (_isFirstLoad) {
-                  // ✅ Do NOT override your custom text on first load
-                  _isFirstLoad = false;
-                  return;
-                }
-
-                setState(() {
-                  _aiResponse = lastMessage.parts.first.text;
-                });
-
-                _speak(lastMessage.parts.first.text);
-              }
-            }
-          },
-
-          builder: (context, state) {
-            String displayText = _isListening
-                ? "Listening..."
-                : (state is ChatLoadingState
-                    ? "Thinking..."
-                    : (_aiResponse.isNotEmpty
-                        ? _aiResponse
-                        : "Tap the mic to talk"));
-
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Center(
-                    child: RiveAnimation.asset(
-                      'assets/chatbot.riv',
-                      controllers: [_riveController],
-                      fit: BoxFit.contain,
-                      alignment: Alignment.center,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        displayText,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          height: 1.4,
-                        ),
-                        textAlign: TextAlign.center,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Modern Header
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+                child: Row(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.2)),
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back_rounded,
+                            color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
                       ),
                     ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 36.0),
-                  child: GestureDetector(
-                    onTap: _toggleListening,
-                    child: Lottie.asset(
-                      'assets/mic_listening.json',
-                      controller: _lottieController,
-                      width: 300,
-                      height: 300,
-                      onLoaded: (composition) {
-                        _lottieController.duration = composition.duration;
-                        if (_isListening) {
-                          _lottieController
-                              .repeat(period: composition.duration);
-                        }
-                      },
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'AI Therapist',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const Text(
+                            'Voice Chat Session',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    // Status indicator
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _isListening
+                            ? Colors.red.withOpacity(0.15)
+                            : Colors.green.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: _isListening
+                              ? Colors.red.withOpacity(0.3)
+                              : Colors.green.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: _isListening ? Colors.red : Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _isListening ? 'Recording' : 'Ready',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            );
-          },
+              ),
+
+              // Main Content
+              Expanded(
+                child: BlocConsumer<ChatBloc, ChatState>(
+                  listener: (context, state) {
+                    if (state is ChatSuccessState &&
+                        state.messages.isNotEmpty) {
+                      final lastMessage = state.messages.last;
+
+                      if (lastMessage.role == "model") {
+                        if (_isFirstLoad) {
+                          _isFirstLoad = false;
+                          return;
+                        }
+
+                        setState(() {
+                          _aiResponse = lastMessage.parts.first.text;
+                        });
+
+                        _speak(lastMessage.parts.first.text);
+                      }
+                    }
+                  },
+                  builder: (context, state) {
+                    String displayText = _isListening
+                        ? "I'm listening... speak naturally"
+                        : (state is ChatLoadingState
+                            ? "Processing your message..."
+                            : (_aiResponse.isNotEmpty
+                                ? _aiResponse
+                                : "Tap the microphone to start our conversation"));
+
+                    return Column(
+                      children: [
+                        // Avatar/Animation Section
+                        Expanded(
+                          flex: 3,
+                          child: Container(
+                            margin: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withOpacity(0.05),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.2),
+                                width: 1.5,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(28),
+                              child: RiveAnimation.asset(
+                                'assets/chatbot.riv',
+                                controllers: [_riveController],
+                                fit: BoxFit.contain,
+                                alignment: Alignment.center,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Response Text Section
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 20),
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  Colors.white.withOpacity(0.12),
+                                  Colors.white.withOpacity(0.06),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.15),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  if (state is ChatLoadingState) ...[
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                              Colors.white.withOpacity(0.8),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          'Thinking...',
+                                          style: TextStyle(
+                                            color:
+                                                Colors.white.withOpacity(0.8),
+                                            fontSize: 16,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                  Text(
+                                    displayText,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      height: 1.6,
+                                      letterSpacing: 0.2,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Voice Controls Section
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            children: [
+                              // Microphone Button
+                              GestureDetector(
+                                onTap: _toggleListening,
+                                child: Container(
+                                  width: 120,
+                                  height: 120,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: _isListening
+                                          ? [
+                                              Colors.red.shade400,
+                                              Colors.red.shade600,
+                                            ]
+                                          : [
+                                              Colors.blue.shade400,
+                                              Colors.purple.shade600,
+                                            ],
+                                    ),
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: (_isListening
+                                                ? Colors.red
+                                                : Colors.blue)
+                                            .withOpacity(0.3),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 8),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      if (_isListening)
+                                        Lottie.asset(
+                                          'assets/mic_listening.json',
+                                          controller: _lottieController,
+                                          width: 100,
+                                          height: 100,
+                                          onLoaded: (composition) {
+                                            _lottieController.duration =
+                                                composition.duration;
+                                            if (_isListening) {
+                                              _lottieController.repeat(
+                                                  period: composition.duration);
+                                            }
+                                          },
+                                        ),
+                                      if (!_isListening)
+                                        const Icon(
+                                          Icons.mic_rounded,
+                                          size: 48,
+                                          color: Colors.white,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                _isListening
+                                    ? 'Tap to stop recording'
+                                    : 'Tap to start speaking',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.8),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
