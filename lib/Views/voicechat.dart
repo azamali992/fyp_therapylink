@@ -252,7 +252,7 @@ class _VoiceChatPageState extends State<VoiceChatPage>
                             'Eve',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.8),
-                              fontSize: 16,
+                              fontSize: 24S,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -260,7 +260,7 @@ class _VoiceChatPageState extends State<VoiceChatPage>
                             'Your personal Voice Chat Assistant',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 24,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                               letterSpacing: -0.5,
                             ),
