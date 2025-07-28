@@ -8,6 +8,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final double screenHeight;
   final VoidCallback? onSummarize;
   final bool isSummarizing;
+  final Widget? leading;
 
   const CustomAppBar({
     super.key,
@@ -15,6 +16,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.screenHeight,
     this.onSummarize,
     this.isSummarizing = false,
+    this.leading,
   });
 
   @override
@@ -48,32 +50,33 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Back button (only show if not on home page)
-              Navigator.canPop(context)
-                  ? Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+              leading ??
+                  (Navigator.canPop(context)
+                      ? Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                        tooltip: 'Back',
-                      ),
-                    )
-                  : const SizedBox(width: 48), // Same width as IconButton
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            tooltip: 'Back',
+                          ),
+                        )
+                      : const SizedBox(width: 48)),
 
-              // Logo with subtle animation
+              // Logo
               Expanded(
                 child: Center(
                   child: Container(

@@ -47,9 +47,9 @@ class _ChatBotState extends State<ChatBot> {
       _loadLastSentiment(); // Add this line to load the last sentiment
     }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showIntroDialog();
-    });
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _showIntroDialog();
+    // });
   }
 
   // Add this new method to load the last sentiment from Firestore
@@ -199,37 +199,37 @@ class _ChatBotState extends State<ChatBot> {
     }
   }
 
-  void _showIntroDialog() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          backgroundColor: AppColors.backgroundGradientStart,
-          title: const Text(
-            "TherapyLink: Meet Your AI Psychologist",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          content: const Text(
-            "Hello! I'm your AI Psychologist, here to listen, support, and guide you. Feel free to share your thoughts, and I'll do my best to help you on your journey.",
-            style: TextStyle(color: Color.fromARGB(214, 235, 220, 16)),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child:
-                  const Text("Got it", style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // void _showIntroDialog() {
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) {
+  //       return AlertDialog(
+  //         shape: RoundedRectangleBorder(
+  //           borderRadius: BorderRadius.circular(16),
+  //         ),
+  //         backgroundColor: AppColors.backgroundGradientStart,
+  //         title: const Text(
+  //           "TherapyLink: Meet Your AI Psychologist",
+  //           style: TextStyle(
+  //             fontWeight: FontWeight.bold,
+  //             color: Colors.white,
+  //           ),
+  //         ),
+  //         content: const Text(
+  //           "Hello! I'm your AI Psychologist, here to listen, support, and guide you. Feel free to share your thoughts, and I'll do my best to help you on your journey.",
+  //           style: TextStyle(color: Color.fromARGB(214, 235, 220, 16)),
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.of(context).pop(),
+  //             child:
+  //                 const Text("Got it", style: TextStyle(color: Colors.white)),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
   Future<void> _retrieveUsername() async {
     try {

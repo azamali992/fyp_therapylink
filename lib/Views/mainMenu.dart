@@ -5,6 +5,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:therapylink/Views/custom_app_bar.dart';
 import 'package:therapylink/Views/maps/map 2.dart';
 import 'package:therapylink/Views/moodanalysis.dart';
+import 'package:therapylink/Views/psychologicaltest.dart';
 import 'package:therapylink/Views/settings.dart';
 import 'package:therapylink/Views/voicechat.dart';
 import 'package:therapylink/bloc/chat_bloc.dart';
@@ -143,6 +144,17 @@ class _MainMenuState extends State<MainMenu>
       appBar: CustomAppBar(
         screenWidth: screenWidth,
         screenHeight: screenHeight,
+        leading: IconButton(
+          icon: const Icon(Icons.psychology, color: Colors.white),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PsychologicalTestPage(),
+              ),
+            );
+          },
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(
