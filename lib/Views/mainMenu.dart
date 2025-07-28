@@ -24,7 +24,7 @@ class _MainMenuState extends State<MainMenu>
     with SingleTickerProviderStateMixin {
   // More refined color palette
   final Map<String, Color> _buttonColors = {
-    'Voice Chat': const Color.fromARGB(255, 3, 43, 189), // Deep purple
+    'Eve': const Color.fromARGB(255, 3, 43, 189), // Deep purple
     'Settings': const Color.fromARGB(255, 188, 6, 6), // Deep blue
     'Mood Analysis': const Color.fromARGB(255, 207, 214, 4), // Teal
     'Stress Relief': const Color(0xFF7B1FA2), // Purple
@@ -32,7 +32,7 @@ class _MainMenuState extends State<MainMenu>
   };
 
   final Map<String, bool> _isClicked = {
-    'Voice Chat': false,
+    'Eve': false,
     'Settings': false,
     'Mood Analysis': false,
     'Stress Relief': false,
@@ -86,7 +86,7 @@ class _MainMenuState extends State<MainMenu>
 
     Future.delayed(const Duration(milliseconds: 300), () {
       switch (label) {
-        case 'Voice Chat':
+        case 'Eve':
           final chatBloc = context.read<ChatBloc?>();
           Navigator.push(
             context,
@@ -122,7 +122,7 @@ class _MainMenuState extends State<MainMenu>
         case 'Local Clinics':
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) =>  const MapScreen()),
+            MaterialPageRoute(builder: (context) => const MapScreen()),
           );
           break;
         default:
@@ -191,9 +191,9 @@ class _MainMenuState extends State<MainMenu>
 
                     switch (index) {
                       case 0:
-                        label = 'Voice Chat';
+                        label = 'Eve';
                         icon = Icons.voice_chat;
-                        subLabel = 'Chat with us';
+                        subLabel = 'Your personal therapist';
                         break;
                       case 1:
                         label = 'Settings';

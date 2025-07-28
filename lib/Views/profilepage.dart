@@ -386,21 +386,6 @@ class _ProfilePageState extends State<ProfilePage>
                             ),
 
                             // Stats row
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 15.0),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  _buildStatItem('Sessions', '24'),
-                                  _buildVerticalDivider(),
-                                  _buildStatItem('Streak', '7 days'),
-                                  _buildVerticalDivider(),
-                                  _buildStatItem('Progress', '87%'),
-                                ],
-                              ),
-                            ),
 
                             // Profile card with frosted glass effect
                             ClipRRect(
@@ -472,8 +457,6 @@ class _ProfilePageState extends State<ProfilePage>
                                           color: Colors.white24, height: 20),
                                       _buildProfileInfo('Email', _email),
                                       const SizedBox(height: 15.0),
-                                      _buildProfileInfo(
-                                          'Current Mood', _currentMood),
                                       const SizedBox(height: 15.0),
                                       _buildProfileInfo('Gender', _gender),
                                       const SizedBox(height: 15.0),

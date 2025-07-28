@@ -249,7 +249,7 @@ class _VoiceChatPageState extends State<VoiceChatPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'AI Therapist',
+                            'Eve',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.8),
                               fontSize: 16,
@@ -257,7 +257,7 @@ class _VoiceChatPageState extends State<VoiceChatPage>
                             ),
                           ),
                           const Text(
-                            'Voice Chat Session',
+                            'Your personal Voice Chat Assistant',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 24,
@@ -533,6 +533,39 @@ class _VoiceChatPageState extends State<VoiceChatPage>
                                   color: Colors.white.withOpacity(0.8),
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              // --- Stop Voice Button ---
+                              SizedBox(
+                                width: 140,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.deepPurple.shade600,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                    elevation: 4,
+                                  ),
+                                  icon: const Icon(Icons.stop_circle_rounded,
+                                      size: 22),
+                                  label: const Text(
+                                    "Stop Voice",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    await _flutterTts.stop();
+                                    setState(() {
+                                      _riveController = SimpleAnimation('idle');
+                                    });
+                                  },
                                 ),
                               ),
                             ],
