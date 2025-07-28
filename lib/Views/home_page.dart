@@ -32,7 +32,8 @@ class _ChatBotState extends State<ChatBot> {
 
   // Add these variables for sentiment scoring
   List<int> _recentSentimentScores = [];
-  final int _minChatsBeforeRedirect = 5; // Minimum chats before checking  @override
+  final int _minChatsBeforeRedirect =
+      5; // Minimum chats before checking  @override
   @override
   void initState() {
     super.initState();

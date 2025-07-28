@@ -8,6 +8,9 @@ import 'package:therapylink/utils/colors.dart';
 import 'package:therapylink/Views/profile_info.dart';
 import 'package:therapylink/Views/privacy_security_page.dart';
 import 'package:therapylink/Views/font_size_provider.dart';
+import 'package:therapylink/Views/help_faq_page.dart';
+import 'package:therapylink/Views/send_feedback_page.dart';
+import 'package:therapylink/Views/about_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -56,10 +59,9 @@ class _SettingsPageState extends State<SettingsPage>
 
     final uid = _auth.currentUser?.uid;
     if (uid != null) {
-      await _firestore
-          .collection('settings')
-          .doc(uid)
-          .set({key: value}, SetOptions(merge: true));
+      await _firestore.collection('users').doc(uid).set({
+        'settings': {key: value},
+      }, SetOptions(merge: true));
     }
   }
 
@@ -184,19 +186,36 @@ class _SettingsPageState extends State<SettingsPage>
                 icon: Icons.help,
                 title: 'Help & FAQ',
                 fontSize: fontSize,
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const HelpFaqPage()),
+                  );
+                },
               ),
               _buildSettingItem(
                 icon: Icons.feedback,
                 title: 'Send Feedback',
                 fontSize: fontSize,
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const SendFeedbackPage()),
+                  );
+                },
               ),
               _buildSettingItem(
                 icon: Icons.info,
                 title: 'About',
                 fontSize: fontSize,
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AboutPage()),
+                  );
+                },
               ),
             ],
           ),

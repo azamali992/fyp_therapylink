@@ -124,6 +124,6 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     } catch (e) {
       print('[ERROR] Error generating bot response from API: $e');
       return 'Sorry, I encountered an error while processing your message. Please try again.';
-}
-}
+    }
+  }
 }
