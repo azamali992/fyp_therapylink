@@ -9,8 +9,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:therapylink/Views/stress_relieving.dart';
 import 'package:therapylink/Views/profile_info.dart';
 import 'package:therapylink/Views/moodanalysis.dart';
-import 'package:therapylink/Views/settings.dart';
 import 'package:therapylink/Views/about_page.dart';
+import 'package:therapylink/Views/psychologicaltest.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
@@ -694,7 +694,7 @@ class _ProfilePageState extends State<ProfilePage>
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) =>
-                                            const SettingsPage(), // Use your existing SettingsPage
+                                            const PsychologicalTestPage(), // Use your existing PsychologicalTestPage
                                       ),
                                     );
                                   },

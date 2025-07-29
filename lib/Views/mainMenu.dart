@@ -25,7 +25,7 @@ class _MainMenuState extends State<MainMenu>
   // More refined color palette
   final Map<String, Color> _buttonColors = {
     'Eve': const Color.fromARGB(255, 3, 43, 189), // Deep purple
-    'Settings': const Color.fromARGB(255, 188, 6, 6), // Deep blue
+    'Psychological Test': const Color.fromARGB(255, 188, 6, 6), // Deep blue
     'Mood Analysis': const Color.fromARGB(255, 207, 214, 4), // Teal
     'Stress Relief': const Color(0xFF7B1FA2), // Purple
     'Local Clinics': const Color.fromARGB(255, 3, 161, 14), // Indigo
@@ -33,7 +33,7 @@ class _MainMenuState extends State<MainMenu>
 
   final Map<String, bool> _isClicked = {
     'Eve': false,
-    'Settings': false,
+    'Psychological Test': false,
     'Mood Analysis': false,
     'Stress Relief': false,
     'Local Clinics': false,
@@ -100,10 +100,11 @@ class _MainMenuState extends State<MainMenu>
           );
           break;
 
-        case 'Settings':
+        case 'Psychological Test':
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const SettingsPage()),
+            MaterialPageRoute(
+                builder: (context) => const PsychologicalTestPage()),
           );
           break;
         case 'Mood Analysis':
@@ -145,12 +146,12 @@ class _MainMenuState extends State<MainMenu>
         screenWidth: screenWidth,
         screenHeight: screenHeight,
         leading: IconButton(
-          icon: const Icon(Icons.psychology, color: Colors.white),
+          icon: const Icon(Icons.settings, color: Colors.white),
           onPressed: () {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const PsychologicalTestPage(),
+                builder: (context) => const SettingsPage(),
               ),
             );
           },
@@ -196,9 +197,9 @@ class _MainMenuState extends State<MainMenu>
                         subLabel = 'Your personal therapist';
                         break;
                       case 1:
-                        label = 'Settings';
-                        icon = Icons.settings;
-                        subLabel = 'Adjust your preferences';
+                        label = 'Psychological Test';
+                        icon = Icons.psychology;
+                        subLabel = 'Psych Evaluations';
                         break;
                       case 2:
                         label = 'Mood Analysis';
