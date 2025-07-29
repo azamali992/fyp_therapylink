@@ -81,6 +81,8 @@ class _VoiceChatPageState extends State<VoiceChatPage>
   }
 
   Future<void> _toggleListening() async {
+    // Stop any ongoing TTS voice when mic is tapped
+    await _flutterTts.stop();
     if (_isListening) {
       await _stopAndTranscribe();
     } else {
@@ -252,7 +254,7 @@ class _VoiceChatPageState extends State<VoiceChatPage>
                             'Eve',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.8),
-                              fontSize: 24S,
+                              fontSize: 24,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
