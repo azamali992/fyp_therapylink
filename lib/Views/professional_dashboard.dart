@@ -4,21 +4,22 @@ import '../utils/colors.dart';
 import '../auth.dart';
 import 'login.dart';
 import '../utils/menu_item_builder.dart';
-import 'view_user_insights.dart'; // Add this import
+import 'view_user_insights.dart';
+import 'psychologist_profile.dart';
 
 class ProfessionalDashboard extends StatelessWidget {
   const ProfessionalDashboard({super.key});
 
   final Map<String, Color> _buttonColors = const {
     'View User Insights': Colors.black,
-    'Access Professional Resources': Colors.red,
+    'My Profile': Colors.blue,
     'Collaborate with System': Colors.orange,
     'Patient Management': Colors.green,
   };
 
   final Map<String, bool> _isClicked = const {
     'View User Insights': false,
-    'Access Professional Resources': false,
+    'My Profile': false,
     'Collaborate with System': false,
     'Patient Management': false,
   };
@@ -30,6 +31,13 @@ class ProfessionalDashboard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const ViewUserInsightsPage()),
+        );
+        break;
+      case 'My Profile':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => const PsychologistProfilePage()),
         );
         break;
       // Handle other cases here
@@ -97,10 +105,10 @@ class ProfessionalDashboard extends StatelessWidget {
                       'View patient profiles, chat summaries and appointment history';
                   break;
                 case 2:
-                  label = 'Access Professional Resources';
-                  icon = Icons.book;
+                  label = 'My Profile';
+                  icon = Icons.person;
                   subLabel =
-                      'Specialized Counseling Techniques\nCase Study Integration';
+                      'View and manage your professional profile\nVerification status and credentials';
                   break;
                 case 3:
                   label = 'Collaborate with System';

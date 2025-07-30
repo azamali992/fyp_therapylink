@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Add this import
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:therapylink/bloc/chat_bloc.dart';
 import 'package:therapylink/utils/colors.dart';
 import 'package:therapylink/Views/custom_app_bar.dart';
 import 'package:therapylink/repos/sentiment_repo.dart';
 import 'package:therapylink/Views/stress_relieving.dart';
+import 'package:therapylink/Views/maps/map 2.dart';
 
 class ChatBot extends StatefulWidget {
   const ChatBot({super.key});
@@ -29,9 +30,15 @@ class _ChatBotState extends State<ChatBot> {
   // Add these new variables
   int _consecutiveNegativeCount = 0;
   bool _hasShownStressPopup = false; // To prevent showing popup multiple times
+  bool _hasVisitedRelaxationPage =
+      false; // Track if user has ever visited relaxation page
 
   // Add these variables for sentiment scoring
   List<int> _recentSentimentScores = [];
+  int _totalSentimentScore =
+      0; // Total accumulated sentiment score up to 30 points
+  final int _maxTotalScore = 30; // Maximum limit for total score
+  final int _stressThreshold = 10; // Threshold to suggest relaxation exercises
   final int _minChatsBeforeRedirect =
       5; // Minimum chats before checking  @override
   @override
@@ -57,6 +64,20 @@ class _ChatBotState extends State<ChatBot> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
+        // Load the flag for visited relaxation page
+        final userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists && userDoc.data() != null) {
+          final userData = userDoc.data()!;
+          setState(() {
+            _hasVisitedRelaxationPage =
+                userData['hasVisitedRelaxationPage'] ?? false;
+          });
+        }
+
         // Query the last sentiment document, ordered by timestamp
         final querySnapshot = await FirebaseFirestore.instance
             .collection('users')
@@ -74,26 +95,49 @@ class _ChatBotState extends State<ChatBot> {
           });
           print('Last sentiment loaded: $_currentSentiment');
 
-          // Initialize recent sentiment scores
+          // Initialize recent sentiment scores and calculate total score
           List<int> recentScores = [];
+          int totalScore = 0;
+
           for (var doc in querySnapshot.docs) {
             final sentiment = doc.data()['sentiment'] as String? ?? '';
             int score = 0;
-            if (sentiment.toLowerCase() == 'pos' ||
-                sentiment.toLowerCase() == 'positive') {
-              score = 3;
-            } else if (sentiment.toLowerCase() == 'neg' ||
-                sentiment.toLowerCase() == 'negative') {
-              score = -3;
+
+            // Updated scoring system for the new 5-level sentiment values
+            if (sentiment.toLowerCase() == 'very positive') {
+              score = -3; // Very positive greatly reduces stress score
+            } else if (sentiment.toLowerCase() == 'positive') {
+              score = -2; // Positive reduces stress score
+            } else if (sentiment.toLowerCase() == 'neutral') {
+              score = 0; // Neutral doesn't affect stress score
+            } else if (sentiment.toLowerCase() == 'negative') {
+              score = 2; // Negative increases stress score
+            } else if (sentiment.toLowerCase() == 'very negative') {
+              score = 3; // Very negative greatly increases stress score
+            } else if (sentiment.toLowerCase() == 'pos') {
+              score =
+                  -2; // Handle legacy 'pos' values for backward compatibility
+            } else if (sentiment.toLowerCase() == 'neg') {
+              score =
+                  2; // Handle legacy 'neg' values for backward compatibility
+            } else if (sentiment.toLowerCase() == 'neu') {
+              score =
+                  0; // Handle legacy 'neu' values for backward compatibility
             }
+
             recentScores.add(score);
+            totalScore += score;
           }
+
+          // Cap total score at _maxTotalScore
+          totalScore = totalScore.clamp(0, _maxTotalScore);
 
           // Reverse to maintain chronological order
           recentScores = recentScores.reversed.toList();
 
           setState(() {
             _recentSentimentScores = recentScores;
+            _totalSentimentScore = totalScore;
           });
         }
       }
@@ -111,53 +155,89 @@ class _ChatBotState extends State<ChatBot> {
 
     // Assign score based on sentiment
     int sentimentScore = 0; // default for neutral
-    if (normalizedSentiment == 'pos' || normalizedSentiment == 'positive') {
-      sentimentScore = 3;
-    } else if (normalizedSentiment == 'neg' ||
-        normalizedSentiment == 'negative') {
-      sentimentScore = -3;
+
+    // Updated scoring system for the new 5-level sentiment values
+    if (normalizedSentiment == 'very positive') {
+      sentimentScore = -3; // Very positive greatly reduces stress score
+    } else if (normalizedSentiment == 'positive' ||
+        normalizedSentiment == 'pos') {
+      sentimentScore = -2; // Positive reduces stress score
+    } else if (normalizedSentiment == 'neutral' ||
+        normalizedSentiment == 'neu') {
+      sentimentScore = 0; // Neutral doesn't affect stress score
+    } else if (normalizedSentiment == 'negative' ||
+        normalizedSentiment == 'neg') {
+      sentimentScore = 2; // Negative increases stress score
+    } else if (normalizedSentiment == 'very negative') {
+      sentimentScore = 3; // Very negative greatly increases stress score
     }
 
     // Add score to recent scores list
     _recentSentimentScores.add(sentimentScore);
+
+    // Update total sentiment score
+    _totalSentimentScore += sentimentScore;
+    // Cap total score between 0 and max
+    _totalSentimentScore = _totalSentimentScore.clamp(0, _maxTotalScore);
+
+    print(
+        'Current sentiment score: $sentimentScore, Total score: $_totalSentimentScore');
 
     // Keep only the last 5 sentiment scores
     if (_recentSentimentScores.length > _minChatsBeforeRedirect) {
       _recentSentimentScores.removeAt(0);
     }
 
-    // Calculate average score if we have enough data points
-    if (_recentSentimentScores.length >= _minChatsBeforeRedirect) {
-      double averageScore = _recentSentimentScores.reduce((a, b) => a + b) /
-          _recentSentimentScores.length;
-      print('Average sentiment score: $averageScore');
-
-      // Check if average exceeds threshold
-      if (averageScore > 10 && !_hasShownStressPopup) {
-        _hasShownStressPopup = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showPositiveFeedbackPopup(); // New method for positive feedback
-        });
-      }
+    // Check if total score reaches max value (30) - severe stress case
+    if (_totalSentimentScore >= _maxTotalScore) {
+      _hasShownStressPopup = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // Navigate to appointment booking section in map 2.dart
+        _showSevereStressPopup(); // Show popup for severe stress case
+      });
     }
+    // Check if total score exceeds stress threshold but less than max
+    // Only show if user has never visited relaxation page
+    else if (_totalSentimentScore >= _stressThreshold &&
+        !_hasShownStressPopup &&
+        !_hasVisitedRelaxationPage) {
+      _hasShownStressPopup = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showStressReliefPopup(); // Show stress relief popup
+      });
+    }
+    // // If score is very low (very positive emotions), show positive feedback
+    // else if (_totalSentimentScore <= 2 &&
+    //     _recentSentimentScores.length >= _minChatsBeforeRedirect &&
+    //     !_hasShownStressPopup) {
+    //   _hasShownStressPopup = true;
+    //   WidgetsBinding.instance.addPostFrameCallback((_) {
+    //     _showPositiveFeedbackPopup(); // Show positive feedback
+    //   });
+    // }
 
     setState(() {
       _currentSentiment = sentiment;
 
       // Track consecutive negative sentiments (keep this for the stress relief popup)
-      if (normalizedSentiment == 'neg' || normalizedSentiment == 'negative') {
+      if (normalizedSentiment == 'neg' ||
+          normalizedSentiment == 'negative' ||
+          normalizedSentiment == 'very negative') {
         _consecutiveNegativeCount++;
         print('Consecutive negative count: $_consecutiveNegativeCount');
 
         // Show stress relief popup if reached threshold and not shown yet
-        if (_consecutiveNegativeCount >= 5 && !_hasShownStressPopup) {
+        // Only show if user has never visited relaxation page
+        if (_consecutiveNegativeCount >= 5 &&
+            !_hasShownStressPopup &&
+            !_hasVisitedRelaxationPage) {
           _hasShownStressPopup = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _showStressReliefPopup();
           });
         }
       } else {
-        // Reset counter if sentiment is not negative
+        // Reset counter if sentiment is not negative or very negative
         _consecutiveNegativeCount = 0;
         _hasShownStressPopup =
             false; // Reset popup flag when sentiment improves
@@ -166,6 +246,23 @@ class _ChatBotState extends State<ChatBot> {
 
     // Save the sentiment to Firestore for mood analysis
     await _saveSentimentToFirestore(normalizedSentiment);
+  }
+
+  // Helper method to save relaxation page visit status to Firestore
+  Future<void> _saveRelaxationPageVisit() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({
+          'hasVisitedRelaxationPage': true,
+        });
+      }
+    } catch (e) {
+      print('Error saving relaxation page visit status: $e');
+    }
   }
 
   // Add this helper method to save sentiments to Firestore
@@ -177,10 +274,10 @@ class _ChatBotState extends State<ChatBot> {
         int sentimentScore = 0;
         if (sentiment.toLowerCase() == 'pos' ||
             sentiment.toLowerCase() == 'positive') {
-          sentimentScore = 3;
+          sentimentScore = -2;
         } else if (sentiment.toLowerCase() == 'neg' ||
             sentiment.toLowerCase() == 'negative') {
-          sentimentScore = -3;
+          sentimentScore = 2;
         }
 
         await FirebaseFirestore.instance
@@ -390,14 +487,19 @@ class _ChatBotState extends State<ChatBot> {
                     style: const TextStyle(fontSize: 26),
                   ),
                   const SizedBox(width: 10),
-                  Text(
-                    'Sentiment: ${_getSentimentText()}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                      letterSpacing: 0.5,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sentiment: ${_getSentimentText()}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -649,8 +751,12 @@ class _ChatBotState extends State<ChatBot> {
   // Helper methods for sentiment display
   Color _getSentimentColor() {
     final s = _currentSentiment.toLowerCase().trim();
-    if (s == 'pos' || s == 'positive') {
+    if (s == 'very positive') {
+      return Colors.green.shade700; // Darker green for very positive
+    } else if (s == 'pos' || s == 'positive') {
       return Colors.green;
+    } else if (s == 'very negative') {
+      return Colors.red.shade900; // Darker red for very negative
     } else if (s == 'neg' || s == 'negative') {
       return Colors.red;
     } else if (s == 'neu' || s == 'neutral') {
@@ -661,8 +767,12 @@ class _ChatBotState extends State<ChatBot> {
 
   String _getSentimentEmoji() {
     final s = _currentSentiment.toLowerCase().trim();
-    if (s == 'pos' || s == 'positive') {
+    if (s == 'very positive') {
+      return '😄'; // Big smile for very positive
+    } else if (s == 'pos' || s == 'positive') {
       return '😊';
+    } else if (s == 'very negative') {
+      return '😭'; // Crying for very negative
     } else if (s == 'neg' || s == 'negative') {
       return '😢';
     } else if (s == 'neu' || s == 'neutral') {
@@ -673,8 +783,12 @@ class _ChatBotState extends State<ChatBot> {
 
   String _getSentimentText() {
     final s = _currentSentiment.toLowerCase().trim();
-    if (s == 'pos' || s == 'positive') {
+    if (s == 'very positive') {
+      return 'Very Positive';
+    } else if (s == 'pos' || s == 'positive') {
       return 'Positive';
+    } else if (s == 'very negative') {
+      return 'Very Negative';
     } else if (s == 'neg' || s == 'negative') {
       return 'Negative';
     } else if (s == 'neu' || s == 'neutral') {
@@ -724,10 +838,11 @@ class _ChatBotState extends State<ChatBot> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                // Reset the counter since user dismissed
+                // Reset popup flag but keep other variables
                 setState(() {
                   _consecutiveNegativeCount = 0;
                   _hasShownStressPopup = false;
+                  // Note: we don't reset _hasVisitedRelaxationPage here
                 });
               },
               child: const Text(
@@ -745,10 +860,15 @@ class _ChatBotState extends State<ChatBot> {
                     builder: (context) => const StressRelievingPage(),
                   ),
                 ).then((_) {
-                  // Reset counter after visiting stress relief page
+                  // Reset counter and reduce stress score after visiting stress relief page
                   setState(() {
                     _consecutiveNegativeCount = 0;
                     _hasShownStressPopup = false;
+                    _hasVisitedRelaxationPage =
+                        true; // Set this flag to true once user visits relaxation page
+                    _saveRelaxationPageVisit(); // Save this status to Firebase
+                    // Reduce stress score by half after doing relaxation exercises
+                    _totalSentimentScore = (_totalSentimentScore / 2).round();
                   });
                 });
               },
@@ -761,6 +881,95 @@ class _ChatBotState extends State<ChatBot> {
               ),
               child: const Text(
                 'Yes, Help Me Relax',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showSevereStressPopup() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: AppColors.backgroundGradientStart,
+          title: const Row(
+            children: [
+              Text(
+                '⚠️',
+                style: TextStyle(fontSize: 24),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Immediate Support Needed',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Your stress level is very high. We recommend booking an appointment with a therapist for professional support. Would you like to see available appointments?',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              height: 1.4,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Reset flags but keep the score
+                setState(() {
+                  _consecutiveNegativeCount = 0;
+                  _hasShownStressPopup = false;
+                });
+              },
+              child: const Text(
+                'Not Now',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                // Navigate to map 2.dart for appointment booking
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MapScreen(),
+                  ),
+                ).then((_) {
+                  // Reset after visiting appointment page
+                  setState(() {
+                    _consecutiveNegativeCount = 0;
+                    _hasShownStressPopup = false;
+                    // Reduce stress score slightly after scheduling appointment
+                    _totalSentimentScore = (_totalSentimentScore * 0.7).round();
+                  });
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.backgroundGradientStart,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'Book Appointment',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),

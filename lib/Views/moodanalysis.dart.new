@@ -1,4 +1,4 @@
-﻿// ignore_for_file: deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -9,11 +9,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:ui';
 import 'package:intl/intl.dart';
 import 'package:therapylink/services/summary_service.dart';
-
-// Define colors
-const Color primaryColor = AppColors.backgroundGradientStart;
-const Color secondaryColor = AppColors.bgpink;
-const Color backgroundcolor = AppColors.backgroundGradientEnd;
 
 class MoodAnalysisPage extends StatefulWidget {
   const MoodAnalysisPage({super.key});
@@ -237,8 +232,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
   void _updateDistributionCount(String sentiment) {
     // Handle the 5 new sentiment categories as well as legacy categories
     if (_sentimentDistribution.containsKey(sentiment)) {
-      _sentimentDistribution[sentiment] =
-          (_sentimentDistribution[sentiment] ?? 0) + 1;
+      _sentimentDistribution[sentiment] = (_sentimentDistribution[sentiment] ?? 0) + 1;
     }
   }
 
@@ -306,9 +300,8 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
   // Generate overall sentiment status text
   String _getSentimentStatusText() {
     // Calculate total entries with a preference for the new sentiment format
-    int total =
-        _sentimentDistribution.values.fold(0, (sum, count) => sum + count);
-
+    int total = _sentimentDistribution.values.fold(0, (sum, count) => sum + count);
+    
     if (total == 0) return "Not enough data";
 
     // Calculate percentage of positive sentiments
@@ -318,7 +311,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
     int negativeCount = (_sentimentDistribution['very negative'] ?? 0) +
         (_sentimentDistribution['negative'] ?? 0) +
         (_sentimentDistribution['neg'] ?? 0);
-
+    
     double positivePercentage = (positiveCount / total) * 100;
     double negativePercentage = (negativeCount / total) * 100;
 
@@ -339,8 +332,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
   // Calculate color based on sentiment distribution
   Color _getMoodColor() {
     // Similar logic to status text, but returns a color
-    int total =
-        _sentimentDistribution.values.fold(0, (sum, count) => sum + count);
+    int total = _sentimentDistribution.values.fold(0, (sum, count) => sum + count);
     if (total == 0) return Colors.blue;
 
     int positiveCount = (_sentimentDistribution['very positive'] ?? 0) +
@@ -349,7 +341,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
     int negativeCount = (_sentimentDistribution['very negative'] ?? 0) +
         (_sentimentDistribution['negative'] ?? 0) +
         (_sentimentDistribution['neg'] ?? 0);
-
+    
     double positivePercentage = (positiveCount / total) * 100;
     double negativePercentage = (negativeCount / total) * 100;
 
@@ -404,11 +396,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
       }
 
       // Use the summary service to generate a summary
-      final summary = await SummaryService.generateSummaryForUser(
-        userId: user.uid,
-        messageLimit: 50,
-        summaryType: 'general',
-      );
+      final summary = await SummaryService().summarizeText(messages.join(' '));
 
       setState(() {
         _chatSummary = summary;
@@ -425,17 +413,9 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
     return Scaffold(
       backgroundColor: primaryColor,
-      appBar: CustomAppBar(
-        screenWidth: screenSize.width,
-        screenHeight: screenSize.height,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
+      appBar: CustomAppBar(title: 'Mood Analytics', showBackButton: true),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : _error.isNotEmpty
@@ -550,22 +530,18 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
                   ],
                 ),
                 const SizedBox(height: 12),
-                _buildPsychTestScoreItem(
-                    'Depression Scale (PHQ-9)', 7, 27, Colors.blue),
+                _buildPsychTestScoreItem('Depression Scale (PHQ-9)', 7, 27, Colors.blue),
                 const SizedBox(height: 8),
-                _buildPsychTestScoreItem(
-                    'Anxiety Scale (GAD-7)', 5, 21, Colors.purple),
+                _buildPsychTestScoreItem('Anxiety Scale (GAD-7)', 5, 21, Colors.purple),
                 const SizedBox(height: 8),
-                _buildPsychTestScoreItem(
-                    'Well-being Index', 15, 25, Colors.green),
+                _buildPsychTestScoreItem('Well-being Index', 15, 25, Colors.green),
                 const SizedBox(height: 8),
-                _buildPsychTestScoreItem(
-                    'Stress Scale (PSS-10)', 12, 40, Colors.orange),
+                _buildPsychTestScoreItem('Stress Scale (PSS-10)', 12, 40, Colors.orange),
                 const SizedBox(height: 12),
                 Center(
                   child: TextButton.icon(
-                    icon: Icon(Icons.assessment, color: secondaryColor),
-                    label: Text(
+                    icon: const Icon(Icons.assessment, color: secondaryColor),
+                    label: const Text(
                       'Take New Assessment',
                       style: TextStyle(color: secondaryColor),
                     ),
@@ -585,7 +561,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
   Widget _buildPsychTestScoreItem(
       String title, int score, int maxScore, Color color) {
     final double percentage = score / maxScore;
-
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -711,8 +687,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
   }
 
   Widget _buildSentimentStatRow() {
-    final total =
-        _sentimentDistribution.values.fold(0, (sum, count) => sum + count);
+    final total = _sentimentDistribution.values.fold(0, (sum, count) => sum + count);
     if (total == 0) {
       return const Text(
         "No data available",
@@ -765,8 +740,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
   }
 
   Widget _buildPieChart() {
-    final total =
-        _sentimentDistribution.values.fold(0, (sum, count) => sum + count);
+    final total = _sentimentDistribution.values.fold(0, (sum, count) => sum + count);
     if (total == 0) {
       return const Center(
         child: Text(
@@ -901,8 +875,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
               child: Text(
                 timeFrame,
                 style: TextStyle(
-                  color:
-                      isSelected ? Colors.white : Colors.white.withOpacity(0.7),
+                  color: isSelected ? Colors.white : Colors.white.withOpacity(0.7),
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
@@ -970,21 +943,20 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
               showTitles: true,
               getTitlesWidget: (value, meta) {
                 if (value % interval != 0) return const Text('');
-
+                
                 // Format based on time frame
                 final now = DateTime.now();
                 DateTime date;
-
+                
                 if (selectedTimeFrame == 'Week') {
                   date = now.subtract(Duration(days: (maxX - value).toInt()));
                 } else if (selectedTimeFrame == 'Month') {
                   date = now.subtract(Duration(days: (maxX - value).toInt()));
-                } else {
-                  // Year
+                } else { // Year
                   // For year, show month names every 30 days
                   date = now.subtract(Duration(days: (maxX - value).toInt()));
                 }
-
+                
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
@@ -1017,7 +989,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
                 } else {
                   return const Text('');
                 }
-
+                
                 return Text(
                   text,
                   style: TextStyle(
@@ -1038,7 +1010,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
           LineChartBarData(
             spots: spots,
             isCurved: true,
-            gradient: LinearGradient(
+            gradient: const LinearGradient(
               colors: [secondaryColor, Colors.purple],
             ),
             barWidth: 3,
@@ -1058,7 +1030,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
               show: true,
               gradient: LinearGradient(
                 colors: [
-                  backgroundcolor.withOpacity(0.3),
+                  secondaryColor.withOpacity(0.3),
                   Colors.purple.withOpacity(0.0)
                 ],
                 begin: Alignment.topCenter,
@@ -1114,8 +1086,7 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
                 StreamBuilder<QuerySnapshot>(
                   stream: _sentimentStream,
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting &&
-                        !snapshot.hasData) {
+                    if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
                       return const Center(
                         child: Padding(
                           padding: EdgeInsets.all(20.0),
@@ -1269,35 +1240,32 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
     Color color;
     String emoji;
     String sentimentText;
-
+    
     // Handle all sentiment variations
     if (normalizedSentiment == 'very positive') {
       color = Colors.green.shade700;
-      emoji = '😁';
+      emoji = '😄';
       sentimentText = 'Very Positive';
-    } else if (normalizedSentiment == 'positive' ||
-        normalizedSentiment == 'pos') {
+    } else if (normalizedSentiment == 'positive' || normalizedSentiment == 'pos') {
       color = Colors.green;
       emoji = '😊';
       sentimentText = 'Positive';
-    } else if (normalizedSentiment == 'neutral' ||
-        normalizedSentiment == 'neu') {
+    } else if (normalizedSentiment == 'neutral' || normalizedSentiment == 'neu') {
       color = Colors.blue;
       emoji = '😐';
       sentimentText = 'Neutral';
-    } else if (normalizedSentiment == 'negative' ||
-        normalizedSentiment == 'neg') {
+    } else if (normalizedSentiment == 'negative' || normalizedSentiment == 'neg') {
       color = Colors.red;
-      emoji = '😞';
+      emoji = '😔';
       sentimentText = 'Negative';
     } else if (normalizedSentiment == 'very negative') {
       color = Colors.red.shade900;
-      emoji = '😭­';
+      emoji = '😭';
       sentimentText = 'Very Negative';
     } else {
       // Default fallback
       color = Colors.blue;
-      emoji = '🤷‍♂️';
+      emoji = '🤔';
       sentimentText = 'Unknown';
     }
 
@@ -1370,14 +1338,11 @@ class _MoodAnalysisPageState extends State<MoodAnalysisPage>
                 child: Text(
                   normalizedSentiment == 'very positive'
                       ? '+++'
-                      : normalizedSentiment == 'positive' ||
-                              normalizedSentiment == 'pos'
+                      : normalizedSentiment == 'positive' || normalizedSentiment == 'pos'
                           ? '++'
-                          : normalizedSentiment == 'neutral' ||
-                                  normalizedSentiment == 'neu'
+                          : normalizedSentiment == 'neutral' || normalizedSentiment == 'neu'
                               ? '~'
-                              : normalizedSentiment == 'negative' ||
-                                      normalizedSentiment == 'neg'
+                              : normalizedSentiment == 'negative' || normalizedSentiment == 'neg'
                                   ? '--'
                                   : normalizedSentiment == 'very negative'
                                       ? '---'

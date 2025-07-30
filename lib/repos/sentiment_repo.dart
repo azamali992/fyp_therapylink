@@ -12,7 +12,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class SentimentRepo {
   // Your sentiment-analysis API endpoint
   static const String _endpoint =
-      'https://sentiment-analysis-ubqy.onrender.com/detect_emotion';
+      'https://multilingsentiment.onrender.com/predict';
 
   /// Saves one record into:
   ///   users/{uid}/sentiments/{autoId}
@@ -38,37 +38,132 @@ class SentimentRepo {
   static String _localSentimentAnalysis(String text) {
     final normalized = text.toLowerCase();
 
-    final positiveWords = [
-      'good', 'great', 'happy', 'excellent', 'wonderful',
-      'amazing', 'love', 'enjoy', 'glad', 'pleased',
-      'joy', 'hope', 'excited', 'grateful', 'thankful',
-      'positive', 'awesome', 'fantastic', 'terrific',
-      'delighted', 'satisfied', 'proud','kush' 'successful',
-    ];
-    final negativeWords = [
-      'bad', 'sad', 'angry', 'upset', 'terrible',
-      'horrible', 'hate', 'dislike', 'unhappy', 'disappointed',
-      'sorry', 'regret', 'worried', 'anxious', 'negative',
-      'depressed', 'frustrated', 'annoyed', 'miserable',
-      'awful', 'poor', 'fail',
+    final veryPositiveWords = [
+      'excellent',
+      'wonderful',
+      'amazing',
+      'awesome',
+      'fantastic',
+      'terrific',
+      'delighted',
+      'ecstatic',
+      'thrilled',
+      'overjoyed',
+      'brilliant',
+      'extraordinary',
+      'exceptional',
+      'magnificent',
     ];
 
-    int pos = 0, neg = 0;
+    final positiveWords = [
+      'good',
+      'great',
+      'happy',
+      'glad',
+      'pleased',
+      'joy',
+      'hope',
+      'excited',
+      'grateful',
+      'thankful',
+      'positive',
+      'satisfied',
+      'proud',
+      'kush',
+      'successful',
+      'nice',
+      'better',
+      'cheerful',
+      'content',
+    ];
+
+    final neutralWords = [
+      'okay',
+      'fine',
+      'alright',
+      'so-so',
+      'neutral',
+      'average',
+      'moderate',
+      'fair',
+      'passable',
+      'tolerable',
+      'mediocre',
+      'acceptable',
+      'reasonable',
+    ];
+
+    final negativeWords = [
+      'bad',
+      'sad',
+      'upset',
+      'unhappy',
+      'disappointed',
+      'sorry',
+      'regret',
+      'worried',
+      'negative',
+      'frustrated',
+      'annoyed',
+      'poor',
+      'fail',
+      'dislike',
+    ];
+
+    final veryNegativeWords = [
+      'terrible',
+      'horrible',
+      'hate',
+      'angry',
+      'anxious',
+      'depressed',
+      'miserable',
+      'awful',
+      'dreadful',
+      'devastating',
+      'appalling',
+      'catastrophic',
+      'dire',
+      'tragic',
+      'wretched',
+    ];
+
+    int veryPos = 0, pos = 0, neu = 0, neg = 0, veryNeg = 0;
+
+    for (var w in veryPositiveWords) {
+      if (RegExp(r'\b' + w + r'\b').hasMatch(normalized)) veryPos++;
+    }
     for (var w in positiveWords) {
       if (RegExp(r'\b' + w + r'\b').hasMatch(normalized)) pos++;
+    }
+    for (var w in neutralWords) {
+      if (RegExp(r'\b' + w + r'\b').hasMatch(normalized)) neu++;
     }
     for (var w in negativeWords) {
       if (RegExp(r'\b' + w + r'\b').hasMatch(normalized)) neg++;
     }
+    for (var w in veryNegativeWords) {
+      if (RegExp(r'\b' + w + r'\b').hasMatch(normalized)) veryNeg++;
+    }
 
-    print('Local counts → pos: $pos, neg: $neg');
-    if (pos > neg) return 'pos';
-    if (neg > pos) return 'neg';
-    return 'neu';
+    print(
+        'Local counts → very pos: $veryPos, pos: $pos, neu: $neu, neg: $neg, very neg: $veryNeg');
+
+    // Determine the highest count
+    int max = [veryPos, pos, neu, neg, veryNeg].reduce((a, b) => a > b ? a : b);
+
+    if (max == veryPos && veryPos > 0) return 'very positive';
+    if (max == pos && pos > 0) return 'positive';
+    if (max == veryNeg && veryNeg > 0) return 'very negative';
+    if (max == neg && neg > 0) return 'negative';
+    if (max == neu && neu > 0) return 'neutral';
+
+    // If no matches or tie, fallback to neutral
+    return 'neutral';
   }
 
   /// Analyze the sentiment of [text], then save it under the signed-in user.
-  /// Returns one of: 'pos', 'neg', 'neu'
+  /// Returns one of: 'very positive', 'positive', 'neutral', 'negative', 'very negative'
   static Future<String> analyzeSentiment(String text) async {
     print('📝 Analyzing sentiment for: "$text"');
 
@@ -94,8 +189,8 @@ class SentimentRepo {
 
       if (response.statusCode == 200 &&
           data is Map<String, dynamic> &&
-          data['emotion'] is String) {
-        sentiment = data['emotion'] as String;
+          data.containsKey('sentiment')) {
+        sentiment = data['sentiment'] as String;
         print('🎯 API returned: $sentiment');
       } else {
         throw Exception('Invalid API response');

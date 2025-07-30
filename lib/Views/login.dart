@@ -9,6 +9,7 @@ import 'package:therapylink/auth.dart';
 import '../utils/user_role.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../firebase_options.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:therapylink/Views/bottomnav.dart';
@@ -100,10 +101,36 @@ class _LoginPageState extends State<LoginPage>
       final user = await AuthService.signInWithEmail(email, password);
 
       if (user != null) {
+        print('👤 User authenticated: ${user.uid}');
+
         final role = await AuthService.getUserRole(user.uid);
+        print('🏷️ Retrieved role: $role');
+        print('🎯 Expected role: $expectedRole');
 
         if (mounted) {
           if (role == expectedRole) {
+            print('🎯 Role matches expected role: $role');
+
+            // Additional verification check for Mental Health Professionals
+            if (role == UserRole.MentalHealthProfessional) {
+              print('🏥 Checking verification for Mental Health Professional');
+
+              final isVerified = await _checkPsychologistVerification(user.uid);
+              print('🔍 Verification result: $isVerified');
+
+              if (!isVerified) {
+                print('❌ Verification failed, getting status message');
+                final statusMessage =
+                    await _getVerificationStatusMessage(user.uid);
+                setState(() {
+                  _errorMessage = statusMessage;
+                });
+                return;
+              }
+
+              print('✅ Verification successful, proceeding to dashboard');
+            }
+
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -113,6 +140,7 @@ class _LoginPageState extends State<LoginPage>
               ),
             );
           } else {
+            print('❌ Role mismatch. Expected: $expectedRole, Got: $role');
             setState(() {
               _errorMessage =
                   "Role mismatch. Please log in with the correct account.";
@@ -175,49 +203,77 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
-  Future<void> _signInWithGoogle({bool isSignUp = false}) async {
-    setState(() {
-      _isLoadingUser = true;
-      _errorMessage = null;
-    });
-
-    await ensureFirebaseInitialized();
-
+  // Check if psychologist is verified in the professionals collection
+  Future<bool> _checkPsychologistVerification(String uid) async {
     try {
-      final user = await AuthService.signInWithGoogle();
+      print('🔍 Checking verification for UID: $uid');
 
-      if (user != null) {
-        final isNewUser =
-            user.metadata.creationTime == user.metadata.lastSignInTime;
+      final professionalDoc = await FirebaseFirestore.instance
+          .collection('professionals')
+          .doc(uid)
+          .get();
 
-        if (isSignUp && isNewUser) {
-          await AuthService.saveUserRole(user.uid, UserRole.RegularUser);
-        }
+      print('📄 Professional document exists: ${professionalDoc.exists}');
 
-        final role = await AuthService.getUserRole(user.uid);
+      if (professionalDoc.exists) {
+        final data = professionalDoc.data() as Map<String, dynamic>;
+        print('📊 Professional data: $data');
 
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => role == UserRole.MentalHealthProfessional
-                  ? const ProfessionalDashboard()
-                  : const GoogleBottomBar(),
-            ),
-          );
-        }
-      } else {
-        setState(() {
-          _errorMessage =
-              isSignUp ? "Google Sign Up failed." : "Google Sign In failed.";
-        });
+        final status = data['status']?.toString().toLowerCase() ?? 'pending';
+        final verified = data['verified'] ?? false;
+
+        print('🔐 Status: $status, Verified (legacy): $verified');
+
+        // Only allow login if status is 'verified' or 'approved'
+        final isVerified = status == 'verified' || status == 'approved';
+        print('✅ Is verified: $isVerified');
+
+        return isVerified;
       }
+
+      // If professional document doesn't exist, consider unverified
+      print('❌ Professional document does not exist');
+      return false;
     } catch (e) {
-      setState(() {
-        _errorMessage = "Google Sign-In error: ${e.toString()}";
-      });
-    } finally {
-      setState(() => _isLoadingUser = false);
+      print('🚨 Error checking psychologist verification: $e');
+      // In case of error, deny access for security
+      return false;
+    }
+  }
+
+  // Get verification status message for display
+  Future<String> _getVerificationStatusMessage(String uid) async {
+    try {
+      print('📝 Getting verification status message for UID: $uid');
+
+      final professionalDoc = await FirebaseFirestore.instance
+          .collection('professionals')
+          .doc(uid)
+          .get();
+
+      if (professionalDoc.exists) {
+        final data = professionalDoc.data() as Map<String, dynamic>;
+        final status = data['status']?.toString().toLowerCase() ?? 'pending';
+
+        print('📋 Current status for message: $status');
+
+        switch (status) {
+          case 'pending':
+            return "Your account is pending verification. Please contact the administrator.";
+          case 'rejected':
+            return "Your account has been rejected. Please contact support for more information.";
+          case 'under_review':
+            return "Your account is currently under review. Please wait for approval.";
+          default:
+            return "Your account is not verified. Please contact the administrator.";
+        }
+      }
+
+      print('📄 Professional document not found for status message');
+      return "Professional profile not found. Please complete your registration.";
+    } catch (e) {
+      print('🚨 Error getting verification status: $e');
+      return "Unable to verify account status. Please try again later.";
     }
   }
 

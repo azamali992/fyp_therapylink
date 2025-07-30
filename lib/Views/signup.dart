@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:therapylink/Views/login.dart';
+import 'package:therapylink/Views/psychologist_signup.dart';
 import '../utils/colors.dart';
 import 'package:therapylink/auth.dart';
 import '../utils/user_role.dart';
@@ -606,21 +607,49 @@ class _SignUpPageState extends State<SignUpPage>
 
                       SizedBox(height: screenHeight * 0.02),
 
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildSignupButton(
-                              label: "Sign Up as Professional",
-                              onPressed: () =>
-                                  _signUp(UserRole.MentalHealthProfessional),
-                              gradientColors: const [
-                                Color.fromARGB(255, 130, 60, 229),
-                                Color.fromARGB(255, 93, 25, 173),
-                              ],
-                              isLoading: _isLoading,
+                      // Row(
+                      //   children: [
+                      //     Expanded(
+                      //       child: _buildSignupButton(
+                      //         label: "Sign Up as Professional",
+                      //         onPressed: () =>
+                      //             _signUp(UserRole.MentalHealthProfessional),
+                      //         gradientColors: const [
+                      //           Color.fromARGB(255, 130, 60, 229),
+                      //           Color.fromARGB(255, 93, 25, 173),
+                      //         ],
+                      //         isLoading: _isLoading,
+                      //       ),
+                      //     ),
+                      //   ],
+                      // ),
+
+                      SizedBox(height: screenHeight * 0.02),
+
+                      // Psychologist signup button
+                      Center(
+                        child: TextButton.icon(
+                          icon: const Icon(
+                            Icons.psychology,
+                            color: Colors.white,
+                          ),
+                          label: Text(
+                            "Register as Psychologist",
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: AppConstants.smallFontSize,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ],
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const PsychologistSignUpPage()),
+                            );
+                          },
+                        ),
                       ),
 
                       SizedBox(height: screenHeight * 0.02),
