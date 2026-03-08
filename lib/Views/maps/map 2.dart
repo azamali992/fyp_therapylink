@@ -37,7 +37,7 @@ class _MapScreenState extends State<MapScreen> {
   bool _showProfessionalsTab = false;
 
   final GooglePlacesService _placesService = GooglePlacesService(
-    apiKey: 'AIzaSyBRGgGd3AhtZrH1ZWy3i80oA3XNvUf3JHE',
+    apiKey: '',
   );
 
   final ProfessionalUserService _professionalService =
